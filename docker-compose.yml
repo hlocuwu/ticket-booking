@@ -1,0 +1,86 @@
+version: '3.8'
+
+networks:
+  ticket-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  redis_data:
+
+services:
+  # ---------------------------------------
+  # Databases & Caches
+  # ---------------------------------------
+  postgres:
+    image: postgres:15-alpine
+    container_name: ticket_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ticket_admin
+      POSTGRES_PASSWORD: secure_password_123
+      POSTGRES_DB: ticket_db 
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./infra/db/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - ticket-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ticket_admin -d ticket_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: ticket_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --save 60 1 --loglevel warning 
+    networks:
+      - ticket-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ---------------------------------------
+  # Microservices
+  # ---------------------------------------
+  inventory:
+    build:
+      context: ./services/inventory
+      dockerfile: Dockerfile
+    container_name: ticket_inventory_service
+    restart: on-failure
+    ports:
+      - "8081:8080"
+    environment:
+      # This matches the container_name of our Postgres service
+      - DB_HOST=ticket_postgres 
+    networks:
+      - ticket-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  waitingroom:
+    build:
+      context: ./services/waitingroom
+      dockerfile: Dockerfile
+    container_name: ticket_waitingroom_service
+    restart: on-failure
+    environment:
+      # This matches the container_name of our Redis service
+      - REDIS_HOST=ticket_redis
+    networks:
+      - ticket-network
+    depends_on:
+      redis:
+        condition: service_healthy
