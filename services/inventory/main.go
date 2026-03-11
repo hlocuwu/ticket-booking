@@ -19,6 +19,11 @@ type Ticket struct {
 	IsReserved bool   `json:"is_reserved"`
 }
 
+type ReserveRequest struct {
+	// "binding:required" tells Gin to reject the request if this field is missing
+	TicketID int `json:"ticket_id" binding:"required"`
+}
+
 func main() {
 	fmt.Println("Starting Inventory Service...")
 
@@ -80,6 +85,45 @@ func main() {
 
 		// Return the JSON response
 		c.JSON(http.StatusOK, tickets)
+	})
+
+	// 3. NEW ENDPOINT: Reserve a ticket
+	router.POST("/tickets/reserve", func(c *gin.Context) {
+		var req ReserveRequest
+
+		// Bind the incoming JSON to our struct
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request payload. 'ticket_id' is required."})
+			return
+		}
+
+		// The Magic Query: We ONLY update if is_reserved is currently false.
+		// PostgreSQL guarantees this operation is atomic, preventing double-bookings.
+		result, err := db.Exec("UPDATE tickets SET is_reserved = true WHERE id = $1 AND is_reserved = false", req.TicketID)
+		if err != nil {
+			log.Printf("Database error during reservation: %v", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal server error"})
+			return
+		}
+
+		// Check if the row was actually updated
+		rowsAffected, err := result.RowsAffected()
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to verify reservation status"})
+			return
+		}
+
+		if rowsAffected == 0 {
+			// If 0 rows were updated, it means the ticket was either already reserved OR doesn't exist
+			c.JSON(http.StatusConflict, gin.H{"error": "Ticket is already reserved or does not exist"})
+			return
+		}
+
+		// Success!
+		c.JSON(http.StatusOK, gin.H{
+			"message":   "Ticket successfully reserved!",
+			"ticket_id": req.TicketID,
+		})
 	})
 
 	port := os.Getenv("PORT")
