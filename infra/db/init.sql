@@ -5,7 +5,8 @@ CREATE TABLE IF NOT EXISTS tickets (
     is_reserved BOOLEAN DEFAULT FALSE
 );
 
--- Insert some dummy tickets for two different events
-INSERT INTO tickets (event_id, seat_name) VALUES 
-(1, 'A1'), (1, 'A2'), (1, 'A3'),
-(2, 'VIP-1'), (2, 'VIP-2');
+CREATE TABLE IF NOT EXISTS users (
+    id SERIAL PRIMARY KEY,
+    username VARCHAR(50) UNIQUE NOT NULL,
+    password_hash VARCHAR(255) NOT NULL
+);

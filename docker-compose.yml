@@ -87,20 +87,68 @@ services:
         condition: service_healthy
 
   booking:
-      build:
-        context: ./services/booking
-        dockerfile: Dockerfile
-      container_name: ticket_booking_service
-      restart: on-failure
-      ports:
-        - "8083:8080"
-      environment:
-        # Docker uses the container_name as the internal DNS hostname!
-        - INVENTORY_URL=http://ticket_inventory_service:8080
-        - WAITINGROOM_URL=http://ticket_waitingroom_service:8080
-        - PORT=8080
-      networks:
-        - ticket-network
-      depends_on:
-        - inventory
-        - waitingroom
+    build:
+      context: ./services/booking
+      dockerfile: Dockerfile
+    container_name: ticket_booking_service
+    restart: on-failure
+    ports:
+      - "8083:8080"
+    environment:
+      - INVENTORY_URL=http://ticket_inventory_service:8080
+      - WAITINGROOM_URL=http://ticket_waitingroom_service:8080
+      - AUTH_URL=http://ticket_auth_service:8080 # NEW: Add the Auth internal URL
+      - PORT=8080
+    networks:
+      - ticket-network
+    depends_on:
+      - inventory
+      - waitingroom
+      - auth                             # NEW: Add the dependency
+
+  event:
+    build:
+      context: ./services/event
+      dockerfile: Dockerfile
+    container_name: ticket_event_service
+    restart: on-failure
+    ports:
+      - "8084:8080"
+    environment:
+      - PORT=8080
+    networks:
+      - ticket-network
+
+  auth:
+    build:
+      context: ./services/auth
+      dockerfile: Dockerfile
+    container_name: ticket_auth_service
+    restart: on-failure
+    ports:
+      - "8085:8080"
+    environment:
+      - DB_HOST=ticket_postgres # NEW: Tell Auth where the DB is
+      - PORT=8080
+    networks:
+      - ticket-network
+    depends_on:
+      postgres:                 # NEW: Wait for the DB to be ready
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: ticket_frontend
+    restart: always
+    ports:
+      - "3000:80"
+    networks:
+      - ticket-network
+    depends_on:
+      - auth
+      - event
+      - waitingroom
+      - booking
+
