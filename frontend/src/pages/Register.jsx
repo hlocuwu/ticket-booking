@@ -2,7 +2,7 @@ import { useState, useContext, useEffect } from 'react';
 import { AuthContext } from '../context/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
 import { UserPlus } from 'lucide-react';
-import { authApi } from '../api/client';
+import { authApi } from '../services/apiClient';
 import toast from 'react-hot-toast';
 
 export default function Register() {

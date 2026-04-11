@@ -8,14 +8,14 @@ import { Toaster } from 'react-hot-toast';
 
 function App() {
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col font-sans">
+    <div className="min-h-screen bg-[#f0f2f5] flex flex-col font-sans">
       <Navbar />
-      <main className="flex-grow container mx-auto px-4 py-8">
+      <main className="flex-grow w-full">
         <Routes>
           <Route path="/" element={<Home />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
-          <Route path="/events/:id" element={<EventDetails />} />
+          <Route path="/login" element={<div className="max-w-7xl mx-auto px-4 py-8"><Login /></div>} />
+          <Route path="/register" element={<div className="max-w-7xl mx-auto px-4 py-8"><Register /></div>} />
+          <Route path="/events/:id" element={<div className="max-w-7xl mx-auto px-4 py-8"><EventDetails /></div>} />
         </Routes>
       </main>
       <Toaster position="top-right" />

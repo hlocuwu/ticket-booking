@@ -1,6 +1,6 @@
 import { useEffect, useState, useContext, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { eventApi, queueApi, inventoryApi, bookingApi } from '../api/client';
+import { eventApi, queueApi, inventoryApi, bookingApi } from '../services/apiClient';
 import { AuthContext } from '../context/AuthContext';
 import { Clock, Calendar, MapPin, Users, Ticket, CheckCircle, RefreshCcw } from 'lucide-react';
 import toast from 'react-hot-toast';
