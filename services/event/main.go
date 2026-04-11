@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 )
@@ -35,8 +36,22 @@ func main() {
 		c.JSON(http.StatusOK, gin.H{"status": "up", "service": "event"})
 	})
 
-	// 1. ENDPOINT: Get all events (for the frontend homepage)
+	// 1. ENDPOINT: Get all events (for the frontend homepage) with optional search filter
 	router.GET("/events", func(c *gin.Context) {
+		searchQuery := c.Query("search")
+		if searchQuery != "" {
+			searchQuery = strings.ToLower(searchQuery)
+			var filteredEvents []Event
+			for _, event := range events {
+				// Search by Name or Location
+				if strings.Contains(strings.ToLower(event.Name), searchQuery) ||
+					strings.Contains(strings.ToLower(event.Location), searchQuery) {
+					filteredEvents = append(filteredEvents, event)
+				}
+			}
+			c.JSON(http.StatusOK, filteredEvents)
+			return
+		}
 		c.JSON(http.StatusOK, events)
 	})
 

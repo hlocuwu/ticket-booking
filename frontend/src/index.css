@@ -1,1 +1,13 @@
-@import "tailwindcss";\nbody { font-family: sans-serif; }
+@import "tailwindcss";
+body { font-family: sans-serif; }
+
+/* Hide default browser reveal password icon (Edge) */
+input::-ms-reveal,
+input::-ms-clear {
+  display: none;
+}
+input::-webkit-credentials-auto-fill-button {
+  visibility: hidden;
+  position: absolute;
+  right: 0;
+}

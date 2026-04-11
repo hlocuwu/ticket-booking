@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { eventApi } from '../services/apiClient';
-import { Link } from 'react-router-dom';
-import { Calendar, MapPin, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Link, useSearchParams } from 'react-router-dom';
+import { Calendar, MapPin, ChevronLeft, ChevronRight, SearchX } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Footer from '../components/layout/Footer';
 
@@ -25,11 +25,16 @@ export default function Home() {
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [currentBanner, setCurrentBanner] = useState(0);
+  const [searchParams] = useSearchParams();
+  const searchQuery = searchParams.get('search');
 
   useEffect(() => {
     // 1. Fetch real events from Go backend
-    eventApi.get('/events')
-      .then(res => setEvents(res.data))
+    setLoading(true);
+    const endpoint = searchQuery ? `/events?search=${encodeURIComponent(searchQuery)}` : '/events';
+    
+    eventApi.get(endpoint)
+      .then(res => setEvents(res.data || []))
       .catch(err => {
         console.error(err);
         toast.error('Có lỗi xảy ra khi tải danh sách sự kiện');
@@ -41,7 +46,7 @@ export default function Home() {
       setCurrentBanner((prev) => (prev + 1) % MOCK_BANNERS.length);
     }, 5000);
     return () => clearInterval(timer);
-  }, []);
+  }, [searchQuery]);
 
   const nextBanner = () => setCurrentBanner((prev) => (prev + 1) % MOCK_BANNERS.length);
   const prevBanner = () => setCurrentBanner((prev) => (prev - 1 + MOCK_BANNERS.length) % MOCK_BANNERS.length);
@@ -96,7 +101,7 @@ export default function Home() {
         <div className="flex items-center mb-8">
           <h2 className="text-[26px] font-extrabold text-gray-900 tracking-tight flex items-center gap-3">
             <div className="w-2 h-8 bg-[#00b14f] rounded-lg"></div> {/* Green accent line */}
-            SỰ KIỆN NỔI BẬT
+            {searchQuery ? `KẾT QUẢ TÌM KIẾM: "${searchQuery}"` : 'SỰ KIỆN NỔI BẬT'}
           </h2>
         </div>
         
@@ -104,6 +109,16 @@ export default function Home() {
           <div className="flex flex-col justify-center items-center py-32 text-gray-500">
             <div className="w-12 h-12 border-4 border-gray-200 border-t-[#00b14f] rounded-full animate-spin mb-4"></div>
             <p className="font-medium text-lg">Đang tải sự kiện thú vị...</p>
+          </div>
+        ) : events.length === 0 ? (
+          <div className="flex flex-col justify-center items-center py-32 text-gray-500">
+            <SearchX size={64} className="text-gray-300 mb-4" />
+            <p className="font-medium text-lg">Không tìm thấy sự kiện nào phù hợp!</p>
+            {searchQuery && (
+              <Link to="/" className="mt-4 text-[#00b14f] hover:underline font-semibold">
+                Quay lại xem tất cả sự kiện
+              </Link>
+            )}
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 lg:gap-8">

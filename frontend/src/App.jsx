@@ -4,6 +4,8 @@ import Home from './pages/Home';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import EventDetails from './pages/EventDetails';
+import Profile from './pages/Profile';
+import ProtectedRoute from './components/common/ProtectedRoute';
 import { Toaster } from 'react-hot-toast';
 
 function App() {
@@ -16,6 +18,16 @@ function App() {
           <Route path="/login" element={<div className="max-w-7xl mx-auto px-4 py-8"><Login /></div>} />
           <Route path="/register" element={<div className="max-w-7xl mx-auto px-4 py-8"><Register /></div>} />
           <Route path="/events/:id" element={<div className="max-w-7xl mx-auto px-4 py-8"><EventDetails /></div>} />
+          
+          {/* Protected Routes (Chỉ cho phép truy cập khi đã Login) */}
+          <Route 
+            path="/profile" 
+            element={
+              <ProtectedRoute>
+                <div className="max-w-7xl mx-auto px-4 py-8"><Profile /></div>
+              </ProtectedRoute>
+            } 
+          />
         </Routes>
       </main>
       <Toaster position="top-right" />

@@ -1,5 +1,5 @@
 import { createContext, useState, useEffect } from 'react';
-import { authApi } from '../services/apiClient';
+import { authService } from '../services/authService';
 import toast from 'react-hot-toast';
 
 export const AuthContext = createContext();
@@ -8,35 +8,65 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  // 1. Phục hồi state đăng nhập khi load trang F5 bằng cách fetch profile
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      authApi.post('/verify')
-        .then(res => {
-          if (res.data.valid) {
-            setUser({ username: res.data.username });
-          }
-        })
-        .catch(() => {
-          localStorage.removeItem('token');
-        })
-        .finally(() => setLoading(false));
-    } else {
-      setLoading(false);
-    }
+    const fetchProfile = async () => {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        setLoading(false);
+        return;
+      }
+      try {
+        const userData = await authService.getProfile();
+        // Cập nhật nguyên dữ liệu profile (chứa id, email, username) vào user state
+        setUser(userData?.data || userData);
+      } catch (err) {
+        console.error('Failed to get profile:', err);
+        // Reset nếu token lỗi / hết hạn
+        localStorage.removeItem('token');
+        setUser(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProfile();
   }, []);
 
-  const login = async (username, password) => {
+  // 2. Logic hàm login
+  const login = async (credentials) => {
     try {
-      const res = await authApi.post('/login', { username, password });
-      localStorage.setItem('token', res.data.token);
-      localStorage.setItem('username', username);
-      setUser({ username });
-      toast.success('Logged in successfully!');
+      const res = await authService.login(credentials);
+      
+      // Golang Backend thường trả jwt token vào trường res.token hoặc res.data.token
+      const token = res.token || res.data?.token;
+      if (token) {
+        localStorage.setItem('token', token);
+      }
+
+      // Login xong gọi ngay hàm getProfile để Navbar có đủ thông tin
+      const userData = await authService.getProfile();
+      setUser(userData?.data || userData);
+      
+      toast.success('Đăng nhập thành công!');
       return true;
     } catch (err) {
-      toast.error(err.response?.data?.error || 'Login failed');
-      return false;
+      const errorMsg = err.response?.data?.message || err.response?.data?.error || 'Đăng nhập thất bại';
+      toast.error(errorMsg);
+      throw err; // Quăng lỗi để View bắt loading State
+    }
+  };
+
+  // 3. Logic hàm register
+  const register = async (userData) => {
+    try {
+      await authService.register(userData);
+      toast.success('Đăng ký thành công! Vui lòng đăng nhập.');
+      return true;
+    } catch (err) {
+      const errorMsg = err.response?.data?.message || err.response?.data?.error || 'Đăng ký thất bại';
+      toast.error(errorMsg);
+      throw err;
     }
   };
 
@@ -44,12 +74,12 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem('token');
     localStorage.removeItem('username');
     setUser(null);
-    toast.success('Logged out');
+    toast.success('Thoát tài khoản thành công');
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, loading }}>
-      {children}
+    <AuthContext.Provider value={{ user, setUser, login, register, logout, loading }}>
+      {!loading && children}
     </AuthContext.Provider>
   );
 };
