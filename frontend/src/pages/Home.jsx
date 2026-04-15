@@ -12,15 +12,6 @@ const MOCK_BANNERS = [
   { id: 3, image: 'https://images.unsplash.com/photo-1501281668745-f7f57925c3b4?auto=format&fit=crop&w=1600&q=80', title: 'Lễ hội EDM lớn nhất năm' }
 ];
 
-// Placeholder Mock images for our fetched backend events 
-// since our backend currently doesn't store an `image` column
-const EVENT_IMAGES = [
-  'https://images.unsplash.com/photo-1459749411175-04bf5292ceea?auto=format&fit=crop&w=600&q=80',
-  'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=600&q=80',
-  'https://images.unsplash.com/photo-1506157786151-b8491531f063?auto=format&fit=crop&w=600&q=80',
-  'https://images.unsplash.com/photo-1533174000222-3580556eaaff?auto=format&fit=crop&w=600&q=80',
-];
-
 export default function Home() {
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -30,16 +21,22 @@ export default function Home() {
 
   useEffect(() => {
     // 1. Fetch real events from Go backend
-    setLoading(true);
-    const endpoint = searchQuery ? `/events?search=${encodeURIComponent(searchQuery)}` : '/events';
-    
-    eventApi.get(endpoint)
-      .then(res => setEvents(res.data || []))
-      .catch(err => {
+    const fetchEvents = async () => {
+      setLoading(true);
+      const endpoint = searchQuery ? `/events?search=${encodeURIComponent(searchQuery)}` : '/events';
+      
+      try {
+        const res = await eventApi.get(endpoint);
+        setEvents(res.data || []);
+      } catch (err) {
         console.error(err);
         toast.error('Có lỗi xảy ra khi tải danh sách sự kiện');
-      })
-      .finally(() => setLoading(false));
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchEvents();
       
     // 2. Auto-slide logic for banner
     const timer = setInterval(() => {
@@ -124,14 +121,14 @@ export default function Home() {
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 lg:gap-8">
             {events.map((event, idx) => (
               <Link 
-                to={`/events/${event.id}`} 
+                to={`/event/${event.id}`} 
                 key={event.id}
                 className="group bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-[0_8px_30px_rgb(0,0,0,0.12)] transition-all duration-300 transform hover:-translate-y-1.5 flex flex-col h-full border border-gray-100"
               >
                 {/* Event Image */}
                 <div className="aspect-[4/3] w-full bg-gray-200 overflow-hidden relative">
                   <img 
-                    src={EVENT_IMAGES[idx % EVENT_IMAGES.length]} 
+                    src={event.image_url || 'https://images.unsplash.com/photo-1459749411175-04bf5292ceea?auto=format&fit=crop&w=600&q=80'} 
                     alt={event.name} 
                     className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                   />

@@ -4,7 +4,9 @@ import Home from './pages/Home';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import EventDetails from './pages/EventDetails';
+import Payment from './pages/Payment';
 import Profile from './pages/Profile';
+import MyTickets from './pages/MyTickets';
 import ProtectedRoute from './components/common/ProtectedRoute';
 import { Toaster } from 'react-hot-toast';
 
@@ -17,7 +19,32 @@ function App() {
           <Route path="/" element={<Home />} />
           <Route path="/login" element={<div className="max-w-7xl mx-auto px-4 py-8"><Login /></div>} />
           <Route path="/register" element={<div className="max-w-7xl mx-auto px-4 py-8"><Register /></div>} />
-          <Route path="/events/:id" element={<div className="max-w-7xl mx-auto px-4 py-8"><EventDetails /></div>} />
+          <Route 
+            path="/event/:id" 
+            element={
+              <ProtectedRoute>
+                <div className="max-w-7xl mx-auto px-4 py-8"><EventDetails /></div>
+              </ProtectedRoute>
+            } 
+          />
+          
+          <Route 
+            path="/payment" 
+            element={
+              <ProtectedRoute>
+                <div className="max-w-7xl mx-auto px-4 py-8"><Payment /></div>
+              </ProtectedRoute>
+            } 
+          />
+
+          <Route 
+            path="/my-tickets" 
+            element={
+              <ProtectedRoute>
+                <MyTickets />
+              </ProtectedRoute>
+            } 
+          />
           
           {/* Protected Routes (Chỉ cho phép truy cập khi đã Login) */}
           <Route 
@@ -35,3 +62,4 @@ function App() {
   );
 }
 export default App;
+//

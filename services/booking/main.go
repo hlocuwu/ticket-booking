@@ -89,7 +89,10 @@ func main() {
 		// --- STEP C: Call Inventory to Reserve the Seat ---
 		fmt.Printf("User verified in queue. Attempting to reserve ticket %d...\n", req.TicketID)
 		reserveResp, err := client.R().
-			SetBody(map[string]interface{}{"ticket_id": req.TicketID}).
+			SetBody(map[string]interface{}{
+				"ticket_id": req.TicketID,
+				"owner_id":  req.UserID,
+			}).
 			Post(inventoryURL + "/tickets/reserve")
 
 		if err != nil {

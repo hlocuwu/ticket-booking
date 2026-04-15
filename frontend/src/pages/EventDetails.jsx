@@ -1,8 +1,8 @@
-import { useEffect, useState, useContext, useRef } from 'react';
+import { useEffect, useState, useContext, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { eventApi, queueApi, inventoryApi, bookingApi } from '../services/apiClient';
 import { AuthContext } from '../context/AuthContext';
-import { Clock, Calendar, MapPin, Users, Ticket, CheckCircle, RefreshCcw } from 'lucide-react';
+import { Calendar, MapPin, Ticket, CheckCircle, RefreshCcw, ChevronDown, ChevronUp, X, ZoomIn } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export default function EventDetails() {
@@ -11,45 +11,112 @@ export default function EventDetails() {
   const { user } = useContext(AuthContext);
   
   const [event, setEvent] = useState(null);
-  const [tickets, setTickets] = useState([]);
   
   const [queueStatus, setQueueStatus] = useState('NOT_JOINED'); // NOT_JOINED, IN_QUEUE, TURN_ARRIVED
   const [queuePosition, setQueuePosition] = useState(null);
   
   const [loading, setLoading] = useState(true);
-  const [bookingTicketId, setBookingTicketId] = useState(null);
+  const [isExpanded, setIsExpanded] = useState(false);
   
+  const [timeLeft, setTimeLeft] = useState(300);
+  const [selectedTickets, setSelectedTickets] = useState({});
+  const [showImageModal, setShowImageModal] = useState(false);
+  const [availableCounts, setAvailableCounts] = useState({ vip: 0, ga: 0, standard: 0 });
+
   const pollInterval = useRef(null);
+  const inventoryPollInterval = useRef(null);
 
   useEffect(() => {
     // Fetch Event Details
     eventApi.get(`/events/${id}`)
       .then(res => setEvent(res.data))
-      .catch(err => toast.error('Failed to load event details'))
+      .catch(err => {
+        console.error(err);
+        toast.error('Failed to load event details');
+      })
       .finally(() => setLoading(false));
 
     return () => clearInterval(pollInterval.current);
   }, [id]);
 
   useEffect(() => {
-    if (queueStatus === 'TURN_ARRIVED') {
-      fetchTickets();
+    let timer;
+    if (queueStatus === 'TURN_ARRIVED' && timeLeft > 0) {
+      timer = setInterval(() => {
+        setTimeLeft(prev => prev - 1);
+      }, 1000);
+    } else if (timeLeft === 0 && queueStatus === 'TURN_ARRIVED') {
+      toast.error('Đã hết thời gian thao tác!');
+      setQueueStatus('NOT_JOINED');
+      setTimeLeft(300);
+      setSelectedTickets({});
     }
-  }, [queueStatus]);
+    return () => clearInterval(timer);
+  }, [queueStatus, timeLeft]);
+    const fetchInventory = useCallback(async () => {
+      try {
+        const res = await inventoryApi.get('/tickets');
+        const ticketsForEvent = res.data.filter(t => t.event_id === Number(id) && !t.is_reserved);
+        
+        const counts = { vip: 0, ga: 0, standard: 0 };
+        ticketsForEvent.forEach(t => {
+          const name = t.seat_name.toUpperCase();
+          if (name.includes('VIP')) counts.vip++;
+          else if (name.includes('G') || name.includes('A')) counts.ga++;
+          else counts.standard++; // Anything else matches Standard
+        });
+        setAvailableCounts(counts);
+      } catch (err) {
+        console.error('Failed to fetch inventory:', err);
+      }
+    }, [id]);
 
-  const fetchTickets = () => {
-    inventoryApi.get('/tickets')
-      .then(res => {
-        // Filter tickets for this event and not reserved
-        const availableTickets = res.data.filter(t => t.event_id === Number(id) && !t.is_reserved);
-        setTickets(availableTickets);
-      })
-      .catch(err => toast.error('Failed to fetch tickets'));
+    useEffect(() => {
+      if (queueStatus === 'TURN_ARRIVED') {
+        fetchInventory();
+        inventoryPollInterval.current = setInterval(fetchInventory, 3000); // Poll every 3s
+      }
+      return () => {
+        if (inventoryPollInterval.current) clearInterval(inventoryPollInterval.current);
+      }
+    }, [queueStatus, fetchInventory]);
+
+  const ticketTypes = [
+    { id: 'vip', name: 'VIP (Khu V)', price: 2500000, color: 'bg-yellow-500' },
+    { id: 'ga', name: 'GA (Khu G)', price: 1500000, color: 'bg-blue-500' },
+    { id: 'standard', name: 'Standard (Khu S)', price: 700000, color: 'bg-green-500' },
+  ];
+
+  const handleQuantityChange = (typeId, delta) => {
+    setSelectedTickets(prev => {
+      const current = prev[typeId] || 0;
+      let next = Math.max(0, current + delta);
+      // Validate with realtime inventory
+      if (availableCounts[typeId] !== undefined) {
+        next = Math.min(next, availableCounts[typeId]);
+      }
+      return { ...prev, [typeId]: next };
+    });
+  };
+
+  const calculateTotal = () => {
+    return Object.entries(selectedTickets).reduce((total, [typeId, qty]) => {
+      const type = ticketTypes.find(t => t.id === typeId);
+      return total + (type ? type.price * qty : 0);
+    }, 0);
+  };
+
+  const handleCheckout = () => {
+    if (calculateTotal() > 0) {
+      navigate('/payment', { state: { selectedTickets, event, total: calculateTotal() } });
+    } else {
+      toast.error('Vui lòng chọn ít nhất 1 vé');
+    }
   };
 
   const joinQueue = async () => {
     if (!user) {
-      toast.error('You must be logged in to book a ticket');
+      toast.error('Vui lòng đăng nhập để mua vé');
       navigate('/login');
       return;
     }
@@ -57,10 +124,10 @@ export default function EventDetails() {
     try {
       await queueApi.post('/queue/join', { user_id: user.username });
       setQueueStatus('IN_QUEUE');
-      toast.success('Joined the waiting room!');
+      toast.success('Đã tham gia phòng chờ!');
       startPolling();
     } catch (err) {
-      toast.error(err.response?.data?.error || 'Failed to join queue');
+      toast.error(err.response?.data?.error || 'Lỗi khi tham gia hàng chờ');
     }
   };
 
@@ -70,120 +137,270 @@ export default function EventDetails() {
         const res = await queueApi.get('/queue/status', { params: { user_id: user.username } });
         setQueuePosition(res.data.position);
         
-        // Assuming position 1 2 3 corresponds to the front
-        // As a simplified logic, if position <= 10 or specifically 1, they can buy
-        // Let's assume ANY position can see tickets if they are in queue for now, or just position <= 5.
-        // Waiting room logic often lets the first N people go.
-        // Let's just say Position 1 is your turn.
-        if (res.data.position === 1) {
+        if (res.data.position <= 5) {
           setQueueStatus('TURN_ARRIVED');
           clearInterval(pollInterval.current);
-          toast.success('It is your turn! Select a ticket now.');
+          toast.success('Đã đến lượt của bạn! Xin mời chọn ghế.');
         }
       } catch (err) {
+        console.error(err);
         clearInterval(pollInterval.current);
-        if (err.response?.status === 404) {
-             // User bumped or processed
-        }
       }
     }, 5000);
   };
 
-  const handleBook = async (ticketId) => {
-    setBookingTicketId(ticketId);
-    try {
-      await bookingApi.post('/book', {
-        user_id: user.username,
-        ticket_id: ticketId
-      });
-      toast.success('Ticket successfully booked!');
-      setTickets(prev => prev.filter(t => t.id !== ticketId)); // remove from list
-    } catch (err) {
-      toast.error(err.response?.data?.error || 'Failed to book ticket');
-      fetchTickets(); // Refresh list to see if it was taken by someone else
-    } finally {
-      setBookingTicketId(null);
-    }
-  };
-
-  if (loading) return <div className="text-center mt-10">Loading...</div>;
-  if (!event) return <div className="text-center mt-10 text-red-500">Event not found</div>;
-
-  return (
-    <div className="max-w-4xl mx-auto space-y-8">
-      {/* Event Header */}
-      <div className="bg-white rounded-xl shadow-lg p-8">
-        <h1 className="text-4xl font-extrabold text-gray-900 mb-4">{event.name}</h1>
-        <div className="flex flex-wrap gap-6 text-gray-600 font-medium">
-          <div className="flex items-center"><Calendar className="mr-2 text-blue-600" /> {event.date}</div>
-          <div className="flex items-center"><MapPin className="mr-2 text-red-500" /> {event.location}</div>
-          <div className="flex items-center"><Users className="mr-2 text-green-500" /> Capacity: {event.total_spaces}</div>
+  if (loading) {
+    return (
+      <div className="bg-[#1b1c21] min-h-screen pt-8 pb-16 text-white font-sans w-full absolute left-0 top-16 right-0">
+        <div className="w-[95%] max-w-[120rem] mx-auto space-y-8 px-4 mt-8 animate-pulse">
+          <div className="bg-[#31333e] rounded-xl flex flex-col md:flex-row h-[500px]">
+            <div className="p-6 w-full md:w-[40%] shrink-0 flex flex-col justify-between">
+              <div>
+                <div className="h-8 bg-[#454756] rounded w-3/4 mb-8"></div>
+                <div className="space-y-6">
+                  <div className="h-6 bg-[#454756] rounded w-5/6"></div>
+                  <div className="h-6 bg-[#454756] rounded w-4/6"></div>
+                </div>
+              </div>
+              <div className="h-12 bg-[#454756] rounded w-full mt-12"></div>
+            </div>
+            <div className="flex-1 bg-[#2a2c36]"></div>
+          </div>
         </div>
       </div>
+    );
+  }
 
-      {/* Queue / Booking Area */}
-      <div className="bg-blue-50 border border-blue-100 rounded-xl p-8">
-        {queueStatus === 'NOT_JOINED' && (
-          <div className="text-center space-y-4">
-            <Clock size={48} className="mx-auto text-blue-500 mb-4" />
-            <h2 className="text-2xl font-bold text-gray-800">Tickets are on High Demand</h2>
-            <p className="text-gray-600">Join the waiting room to secure your chance to buy tickets.</p>
-            <button 
-              onClick={joinQueue}
-              className="mt-4 bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-full font-bold text-lg transition-colors shadow-md hover:shadow-lg"
-            >
-              Join the Waiting Room
-            </button>
-          </div>
-        )}
+  if (!event) return (
+    <div className="bg-[#1b1c21] min-h-screen pt-20 flex flex-col items-center text-white w-full absolute left-0 top-16 right-0">
+      <h2 className="text-2xl font-bold mb-4 text-[#e74c3c]">Không tìm thấy sự kiện</h2>
+      <button onClick={() => navigate('/')} className="text-[#2ecc71] hover:underline">Quay về trang chủ</button>
+    </div>
+  );
 
-        {queueStatus === 'IN_QUEUE' && (
-          <div className="text-center space-y-4">
-            <RefreshCcw size={48} className="mx-auto text-blue-600 animate-spin mb-4" />
-            <h2 className="text-2xl font-bold text-gray-800">You are in the queue</h2>
-            <p className="text-gray-600">Please wait. Don't refresh the page.</p>
-            <div className="inline-block bg-white px-6 py-4 rounded-xl shadow mt-4">
-              <span className="block text-sm text-gray-500 uppercase tracking-wide">Your Position</span>
-              <span className="block text-5xl font-black text-blue-600 mt-1">{queuePosition ?? '--'}</span>
+  return (
+    <div className="bg-[#1b1c21] min-h-screen pt-8 pb-16 text-white font-sans w-full absolute left-0 top-16 right-0 overflow-x-hidden">
+      <div className="w-[95%] max-w-[120rem] mx-auto space-y-8 px-4 mt-8">
+        
+        {/* Header Section */}
+        <div className="bg-[#31333e] rounded-xl flex flex-col md:flex-row shadow-2xl md:h-[500px] border border-[#454756] overflow-hidden">
+          <div className="p-6 w-full md:w-[40%] shrink-0 flex flex-col justify-between z-10 relative md:border-r-[2px] border-dashed border-[#1b1c21]">
+            <div>
+              <h1 className="text-xl font-bold uppercase mb-4 line-clamp-2 text-white">{event.name}</h1>
+              <div className="space-y-3 text-[#d2d4dc]">
+                <div className="flex items-start">
+                  <Calendar className="mr-3 w-5 h-5 mt-1 shrink-0" />
+                  <div className="text-[#2ecc71] font-semibold text-lg">
+                    {`20:00 - 22:00, ${event.date}`}
+                  </div>
+                </div>
+                <div className="flex items-start">
+                  <MapPin className="mr-3 w-5 h-5 mt-1 shrink-0" />
+                  <div>
+                    <div className="text-[#2ecc71] font-semibold text-lg">{event.location}</div>
+                    <div className="text-[#d2d4dc] text-sm mt-1">Đang cập nhật địa chỉ chi tiết...</div>
+                  </div>
+                </div>
+              </div>
             </div>
-          </div>
-        )}
 
-        {queueStatus === 'TURN_ARRIVED' && (
-          <div>
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold text-gray-800 flex items-center">
-                <CheckCircle className="text-green-500 mr-2" /> It's your turn!
-              </h2>
-              <button onClick={fetchTickets} className="text-sm font-semibold text-blue-600 hover:underline">
-                Refresh Tickets
-              </button>
+            <div className="mt-auto pt-4 border-t border-[#464855]">
+               <div className="flex items-baseline mb-6">
+                 <span className="text-xl font-bold mr-2 text-white">Giá từ</span>
+                 <span className="text-[#2ecc71] text-2xl font-bold">700.000 đ {'>'}</span>
+               </div>
+               
+               {queueStatus === 'NOT_JOINED' ? (
+                 <button 
+                   onClick={joinQueue}
+                   className="w-full bg-[#2ecc71] hover:bg-[#27ae60] text-white font-bold py-3 rounded-lg text-lg transition-colors shadow-lg"
+                 >
+                   Mua vé ngay
+                 </button>
+               ) : (
+                 <div className="text-center text-gray-400">
+                    Xem phòng chờ bên dưới
+                 </div>
+               )}
             </div>
             
-            {tickets.length === 0 ? (
-              <div className="text-center p-8 bg-white rounded-lg">
-                <p className="text-gray-500">Sorry, no tickets available at the moment.</p>
+            {/* Cutouts */}
+            <div className="hidden md:block absolute top-0 right-0 w-[56px] h-[56px] bg-[#1b1c21] rounded-full translate-x-1/2 -translate-y-1/2 z-20 border border-[#454756]"></div>
+            <div className="hidden md:block absolute bottom-0 right-0 w-[56px] h-[56px] bg-[#1b1c21] rounded-full translate-x-1/2 translate-y-1/2 z-20 border border-[#454756]"></div>
+          </div>
+
+          <div className="flex-1 relative flex w-full h-[300px] md:h-auto overflow-hidden rounded-b-xl md:rounded-b-none md:rounded-r-xl">
+             <img src={event.image_url || 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?auto=format&fit=crop&w=1600&q=80'} alt={event.name} className="w-full h-full object-cover rounded-xl md:rounded-l-none" onError={(e) => { e.target.src = "https://images.unsplash.com/photo-1501281668745-f7f57925c3b4?auto=format&fit=crop&h=800&q=80"; }} />
+          </div>
+        </div>
+
+        {/* Description Section */}
+        <div className="bg-[#31333e] rounded-xl overflow-hidden shadow-2xl">
+          <div className="px-6 py-4 bg-[#2a2c36] border-b border-[#454756]">
+            <h3 className="text-[#2ecc71] font-bold text-lg">Giới thiệu</h3>
+          </div>
+          <div className="px-8 py-10 text-center space-y-3 text-[#d2d4dc]">
+            <h2 className="text-lg uppercase font-medium tracking-wide mb-4">{event.name}</h2>
+            
+            <div className={`text-lg md:text-xl max-w-2xl mx-auto leading-loose whitespace-pre-line text-left md:text-center font-light overflow-hidden transition-all duration-500 ease-in-out ${isExpanded ? 'max-h-[1000px]' : 'max-h-[8rem]'}`}>
+              Tôi ổn.<br/>
+              Nghe quen không?<br/><br/>
+              90% mọi người nói câu này... đều đang nói dối.<br/><br/>
+              {event.name.toUpperCase()}<br/>
+              {event.date}<br/>
+              {event.location}<br/><br/>
+              Đến đây cùng tôi, nghe sự thật một lần.<br/>
+              Rồi để gió cuốn đi.
+            </div>
+
+            <div className="mt-4 flex justify-center pt-2">
+               <button 
+                 onClick={() => setIsExpanded(!isExpanded)} 
+                 className="flex flex-col items-center text-gray-400 hover:text-[#2ecc71] transition-colors focus:outline-none"
+               >
+                 <span className="text-sm font-semibold mb-1 uppercase tracking-wider">{isExpanded ? 'Thu gọn' : 'Xem thêm'}</span>
+                 {isExpanded ? <ChevronUp className="w-6 h-6" /> : <ChevronDown className="w-6 h-6 animate-bounce" />}
+               </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Queue and Booking Logic UI - Below */}
+        <div className="bg-[#31333e] rounded-xl p-8 mt-8 shadow-2xl border border-[#454756] min-h-[300px]">
+          {queueStatus === 'NOT_JOINED' && (
+            <div className="text-center text-gray-400 py-12 flex flex-col items-center justify-center h-full">
+               <Ticket size={48} className="mb-4 text-[#454756]" />
+               <p className="text-xl">Vui lòng click "Mua vé ngay" ở trên để xếp hàng chờ mua vé.</p>
+            </div>
+          )}
+
+          {queueStatus === 'IN_QUEUE' && (
+            <div className="text-center space-y-4 py-8">
+              <RefreshCcw size={48} className="mx-auto text-[#2ecc71] animate-spin mb-4" />
+              <h2 className="text-2xl font-bold text-white">Bạn đang ở phòng chờ</h2>
+              <p className="text-[#d2d4dc]">Vui lòng đợi. Không tải lại trang.</p>
+              <div className="inline-block bg-[#1b1c21] px-8 py-6 rounded-xl shadow-inner mt-6 border border-[#454756]">
+                <span className="block text-sm text-[#d2d4dc] uppercase tracking-wide">Số thứ tự của bạn</span>
+                <span className="block text-6xl font-black text-[#2ecc71] mt-2">{queuePosition ?? '--'}</span>
               </div>
-            ) : (
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                {tickets.map(ticket => (
-                  <div key={ticket.id} className="bg-white border-2 border-dashed border-gray-200 rounded-lg p-4 text-center hover:border-blue-500 transition-colors group">
-                    <Ticket className="mx-auto text-gray-400 group-hover:text-blue-500 mb-2" size={32} />
-                    <div className="font-bold text-lg mb-4">{ticket.seat_name}</div>
-                    <button
-                      onClick={() => handleBook(ticket.id)}
-                      disabled={bookingTicketId === ticket.id}
-                      className="w-full bg-green-500 hover:bg-green-600 active:bg-green-700 text-white font-bold py-2 rounded transition-colors disabled:opacity-50"
+            </div>
+          )}
+
+          {queueStatus === 'TURN_ARRIVED' && (
+            <div className="py-4">
+              <div className="flex items-center justify-between mb-8 pb-4 border-b border-[#454756]">
+                <h2 className="text-2xl font-bold text-white flex items-center">
+                  <CheckCircle className="text-[#2ecc71] mr-3" size={32} /> Đến lượt bạn mua vé!
+                </h2>
+                <div className="flex items-center space-x-2 bg-[#e74c3c]/10 px-4 py-2 rounded-lg border border-[#e74c3c]/20">
+                  <span className="text-[#e74c3c] font-bold">Thời gian còn lại:</span>
+                  <span className="text-[#e74c3c] font-mono font-bold text-xl tracking-wider">
+                    {Math.floor(timeLeft / 60).toString().padStart(2, '0')}:{(timeLeft % 60).toString().padStart(2, '0')}
+                  </span>
+                </div>
+              </div>
+              
+              <div className="flex flex-col lg:flex-row gap-8">
+                {/* Sơ đồ sân khấu */}
+                <div className="lg:w-2/3 bg-[#2a2c36] p-4 rounded-xl border border-[#454756] flex flex-col items-center justify-center min-h-[400px] relative group cursor-pointer" onClick={() => setShowImageModal(true)}>
+                   <div className="absolute top-4 right-4 bg-black/60 p-2 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity z-10 hidden md:block">
+                     <ZoomIn className="text-white w-6 h-6" />
+                   </div>
+                   <img 
+                     src="https://images.unsplash.com/photo-1540575467063-178a50c2df87?auto=format&fit=crop&w=1200&q=80" 
+                     alt="Sơ đồ sân khấu" 
+                     className="w-full h-auto rounded-lg object-contain max-h-[600px] hover:scale-[1.02] transition-transform duration-300"
+                   />
+                   <p className="mt-4 text-sm text-gray-400 italic text-center">Bấm vào hình để phóng to</p>
+                </div>
+
+                {/* Danh sách các loại vé */}
+                <div className="lg:w-1/3 flex flex-col space-y-4">
+                  <div className="flex-1 space-y-3 overflow-y-auto pr-2 custom-scrollbar">
+                    {ticketTypes.map(type => (
+                      <div key={type.id} className="flex items-center justify-between bg-[#2a2c36] p-4 rounded-xl border border-[#454756] hover:border-[#2ecc71] transition-colors">
+                        <div>
+                          <div className="flex items-center gap-3 mb-1">
+                             <div className={`w-4 h-4 rounded-full shadow-sm ${type.color}`}></div>
+                             <h3 className="text-xl font-bold text-white">{type.name}</h3>
+                          </div>
+                          <div className="flex items-center gap-2 mt-1">
+                            <p className="text-[#2ecc71] font-bold text-lg">
+                              {type.price.toLocaleString('vi-VN')} đ
+                            </p>
+                            <span className="text-xs font-semibold px-2 py-0.5 rounded bg-[#1b1c21] text-gray-300 border border-[#454756]">
+                              Còn: {availableCounts[type.id] !== undefined ? availableCounts[type.id] : 0} vé
+                            </span>
+                          </div>
+                        </div>
+                        
+                        <div className="flex items-center space-x-3 bg-[#1b1c21] p-1 rounded-full border border-[#454756]">
+                          <button 
+                            onClick={() => handleQuantityChange(type.id, -1)}
+                            disabled={(selectedTickets[type.id] || 0) === 0}
+                            className="w-7 h-7 rounded-full bg-[#454756] flex items-center justify-center hover:bg-[#e74c3c] transition-colors text-white font-bold disabled:opacity-50 disabled:hover:bg-[#454756]"
+                          >-</button>
+                          <span className="text-lg font-bold w-5 text-center text-white">
+                            {selectedTickets[type.id] || 0}
+                          </span>
+                          <button 
+                            onClick={() => handleQuantityChange(type.id, 1)}
+                            disabled={(selectedTickets[type.id] || 0) >= (availableCounts[type.id] || 0)}
+                            className="w-7 h-7 rounded-full bg-[#454756] flex items-center justify-center hover:bg-[#2ecc71] transition-colors text-white font-bold disabled:opacity-50 disabled:hover:bg-[#454756]"
+                          >+</button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="pt-6 border-t border-[#454756]">
+                    <div className="flex justify-between items-center mb-6">
+                      <span className="text-xl text-gray-400">Tổng tiền:</span>
+                      <span className="text-3xl font-bold text-[#2ecc71]">
+                        {calculateTotal().toLocaleString('vi-VN')} đ
+                      </span>
+                    </div>
+                    
+                    <button 
+                      onClick={handleCheckout}
+                      disabled={calculateTotal() === 0}
+                      className="w-full bg-[#2ecc71] hover:bg-[#27ae60] active:bg-[#1e8449] disabled:bg-gray-600 disabled:text-gray-400 disabled:cursor-not-allowed text-white font-bold py-4 rounded-xl text-xl transition-all shadow-lg transform disabled:transform-none active:scale-[0.98]"
                     >
-                      {bookingTicketId === ticket.id ? 'Booking...' : 'Book'}
+                      Thanh toán ngay
                     </button>
                   </div>
-                ))}
+                </div>
               </div>
-            )}
-          </div>
-        )}
+            </div>
+          )}
+        </div>
+
       </div>
+
+      {/* Image Zoom Modal */}
+      {showImageModal && (
+        <div 
+          className="fixed inset-0 z-[100] bg-black/90 flex items-center justify-center p-4 cursor-zoom-out backdrop-blur-sm"
+          onClick={() => setShowImageModal(false)}
+        >
+          <button 
+            className="absolute top-6 right-6 text-white hover:text-[#e74c3c] transition-colors p-2 bg-black/50 rounded-full"
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowImageModal(false);
+            }}
+          >
+            <X className="w-8 h-8" />
+          </button>
+          <img 
+            src="https://images.unsplash.com/photo-1540575467063-178a50c2df87?auto=format&fit=crop&w=2000&q=80" 
+            alt="Sơ đồ sân khấu phóng to" 
+            className="max-w-[95vw] max-h-[95vh] object-contain rounded-lg shadow-2xl"
+            onClick={(e) => e.stopPropagation()} // Prevent close when clicking the image itself
+          />
+        </div>
+      )}
+
     </div>
   );
 }

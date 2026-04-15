@@ -115,9 +115,13 @@ services:
     ports:
       - "8084:8080"
     environment:
+      - DB_HOST=ticket_postgres
       - PORT=8080
     networks:
       - ticket-network
+    depends_on:
+      postgres:
+        condition: service_healthy
 
   auth:
     build:
