@@ -5,13 +5,16 @@ WORKDIR /app
 
 # Copy dependency files and download
 COPY go.mod go.sum ./
-RUN go mod download
+RUN --mount=type=cache,id=waitingroom-gomod,target=/go/pkg/mod \
+    go mod download
 
 # Copy the source code
 COPY . .
 
 # Build the Go app
-RUN CGO_ENABLED=0 GOOS=linux go build -o waitingroom-service .
+RUN --mount=type=cache,id=waitingroom-gomod,target=/go/pkg/mod \
+    --mount=type=cache,id=waitingroom-gobuild,target=/root/.cache/go-build \
+    CGO_ENABLED=0 GOOS=linux go build -o waitingroom-service .
 
 # Stage 2: Create a minimal production image
 FROM alpine:latest

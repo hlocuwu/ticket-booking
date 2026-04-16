@@ -2,6 +2,7 @@ import { useContext, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import { Search, Ticket, User, LogOut } from 'lucide-react';
+import toast from 'react-hot-toast';
 import logo from '../assets/images/bg.svg';
 
 export default function Navbar() {
@@ -56,12 +57,20 @@ export default function Navbar() {
 
         {/* Right Nav Items */}
         <div className="flex items-center space-x-8 text-base font-semibold text-white">
-          {user && (
-            <Link to="/my-tickets" className="flex items-center gap-2.5 text-white hover:text-green-100 transition-colors">
-              <Ticket size={24} />
-              <span className="hidden sm:block text-base">Vé của tôi</span>
-            </Link>
-          )}
+          <button 
+            onClick={() => {
+              if (user) {
+                navigate('/my-tickets');
+              } else {
+                toast.error('Vui lòng đăng nhập để xem vé của bạn!');
+                navigate('/login');
+              }
+            }} 
+            className="flex items-center gap-2.5 text-white hover:text-green-100 transition-colors bg-transparent border-none p-0 cursor-pointer"
+          >
+            <Ticket size={24} />
+            <span className="hidden sm:block text-base">Vé của tôi</span>
+          </button>
 
           {user ? (
             <div className="group relative cursor-pointer flex items-center gap-2.5 text-white hover:text-green-100 transition-colors py-2">
@@ -74,11 +83,6 @@ export default function Navbar() {
                 <Link to="/profile" className="flex items-center gap-3 w-full px-3 py-2.5 hover:bg-gray-100 rounded-lg transition-colors text-[15px] font-medium text-gray-700">
                   <User size={20} strokeWidth={2.5} className="text-gray-600" />
                   <span>Tài khoản của tôi</span>
-                </Link>
-
-                <Link to="/my-tickets" className="flex items-center gap-3 w-full px-3 py-2.5 hover:bg-gray-100 rounded-lg transition-colors text-[15px] font-medium text-gray-700">
-                  <Ticket size={20} strokeWidth={2.5} className="text-gray-600" />
-                  <span>Vé của tôi</span>
                 </Link>
 
                 <Link to="/my-tickets" className="flex items-center gap-3 w-full px-3 py-2.5 hover:bg-gray-100 rounded-lg transition-colors text-[15px] font-medium text-gray-700">
