@@ -133,11 +133,11 @@ services:
       - "8086:8086"
     environment:
       - PORT=8086
-      - SMTP_SERVER=${SMTP_SERVER:-smtp.gmail.com}
-      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_SERVER=${SMTP_SERVER}
+      - SMTP_PORT=${SMTP_PORT}
       - SMTP_USERNAME=${SMTP_USERNAME}
       - SMTP_PASSWORD=${SMTP_PASSWORD}
-      - SENDER_EMAIL=${SENDER_EMAIL:-no-reply@ticket-booking.local}
+      - SENDER_EMAIL=${SENDER_EMAIL}
     networks:
       - ticket-network
 
