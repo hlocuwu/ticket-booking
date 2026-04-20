@@ -18,6 +18,8 @@ type Event struct {
 	Date        string `json:"date"`
 	Location    string `json:"location"`
 	TotalSpaces int    `json:"total_spaces"`
+	ImageUrl    string `json:"image_url"`
+	Description string `json:"description"`
 }
 
 func main() {
@@ -59,13 +61,11 @@ func main() {
 		var dbErr error
 
 		if searchQuery != "" {
-			query = "SELECT id, name, TO_CHAR(date, 'YYYY-MM-DD') as date, location, total_spaces FROM events WHERE ILIKE($1) OR ILIKE($2) ORDER BY id ASC" // Wait ILIKE requires column names
-			// Correcting SQL query...
-			query = "SELECT id, name, TO_CHAR(date, 'YYYY-MM-DD'), location, total_spaces FROM events WHERE name ILIKE $1 OR location ILIKE $1 ORDER BY id ASC"
+			query = "SELECT id, name, TO_CHAR(date, 'YYYY-MM-DD'), location, total_spaces, COALESCE(image_url, ''), COALESCE(description, '') FROM events WHERE name ILIKE $1 OR location ILIKE $1 ORDER BY id ASC"
 			wildcardSearch := "%" + searchQuery + "%"
 			rows, dbErr = db.Query(query, wildcardSearch)
 		} else {
-			query = "SELECT id, name, TO_CHAR(date, 'YYYY-MM-DD'), location, total_spaces FROM events ORDER BY id ASC"
+			query = "SELECT id, name, TO_CHAR(date, 'YYYY-MM-DD'), location, total_spaces, COALESCE(image_url, ''), COALESCE(description, '') FROM events ORDER BY id ASC"
 			rows, dbErr = db.Query(query)
 		}
 
@@ -79,7 +79,7 @@ func main() {
 		var events []Event
 		for rows.Next() {
 			var ev Event
-			if err := rows.Scan(&ev.ID, &ev.Name, &ev.Date, &ev.Location, &ev.TotalSpaces); err != nil {
+			if err := rows.Scan(&ev.ID, &ev.Name, &ev.Date, &ev.Location, &ev.TotalSpaces, &ev.ImageUrl, &ev.Description); err != nil {
 				log.Printf("Row scan error: %v", err)
 				continue
 			}
@@ -97,11 +97,11 @@ func main() {
 	router.GET("/events/:id", func(c *gin.Context) {
 		idParam := c.Param("id")
 
-		query := "SELECT id, name, TO_CHAR(date, 'YYYY-MM-DD'), location, total_spaces FROM events WHERE id = $1"
+		query := "SELECT id, name, TO_CHAR(date, 'YYYY-MM-DD'), location, total_spaces, COALESCE(image_url, ''), COALESCE(description, '') FROM events WHERE id = $1"
 		row := db.QueryRow(query, idParam)
 
 		var ev Event
-		err := row.Scan(&ev.ID, &ev.Name, &ev.Date, &ev.Location, &ev.TotalSpaces)
+		err := row.Scan(&ev.ID, &ev.Name, &ev.Date, &ev.Location, &ev.TotalSpaces, &ev.ImageUrl, &ev.Description)
 		if err != nil {
 			if err == sql.ErrNoRows {
 				c.JSON(http.StatusNotFound, gin.H{"error": "Event not found"})
@@ -113,6 +113,45 @@ func main() {
 		}
 
 		c.JSON(http.StatusOK, ev)
+	})
+
+	// 3. ENDPOINT: Get event zones by Event ID
+	router.GET("/events/:id/zones", func(c *gin.Context) {
+		idParam := c.Param("id")
+
+		type EventZone struct {
+			ID          int    `json:"id"`
+			EventID     int    `json:"event_id"`
+			Name        string `json:"name"`
+			Capacity    int    `json:"capacity"`
+			Price       int    `json:"price"`
+			Description string `json:"description"`
+		}
+
+		query := "SELECT id, event_id, name, capacity, price, description FROM event_zones WHERE event_id = $1 ORDER BY price DESC"
+		rows, err := db.Query(query, idParam)
+		if err != nil {
+			log.Printf("DB error fetching zones: %v", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Database error"})
+			return
+		}
+		defer rows.Close()
+
+		var zones []EventZone
+		for rows.Next() {
+			var z EventZone
+			if err := rows.Scan(&z.ID, &z.EventID, &z.Name, &z.Capacity, &z.Price, &z.Description); err != nil {
+				log.Printf("Row scan error: %v", err)
+				continue
+			}
+			zones = append(zones, z)
+		}
+
+		if len(zones) == 0 {
+			zones = []EventZone{}
+		}
+
+		c.JSON(http.StatusOK, zones)
 	})
 
 	port := os.Getenv("PORT")

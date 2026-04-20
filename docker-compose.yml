@@ -123,6 +123,24 @@ services:
       postgres:
         condition: service_healthy
 
+  notification:
+    build:
+      context: ./services/notification
+      dockerfile: Dockerfile
+    container_name: ticket_notification_service
+    restart: on-failure
+    ports:
+      - "8086:8086"
+    environment:
+      - PORT=8086
+      - SMTP_SERVER=${SMTP_SERVER:-smtp.gmail.com}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_USERNAME=${SMTP_USERNAME}
+      - SMTP_PASSWORD=${SMTP_PASSWORD}
+      - SENDER_EMAIL=${SENDER_EMAIL:-no-reply@ticket-booking.local}
+    networks:
+      - ticket-network
+
   auth:
     build:
       context: ./services/auth

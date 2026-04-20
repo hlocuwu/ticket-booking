@@ -1,6 +1,6 @@
 import { useState, useContext, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { inventoryApi, bookingApi } from '../services/apiClient';
+import { inventoryApi, bookingApi, notificationApi } from '../services/apiClient';
 import { AuthContext } from '../context/AuthContext';
 import { CheckCircle, CreditCard, ChevronLeft, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -22,7 +22,7 @@ export default function Payment() {
 
   if (!state) return null;
 
-  const { selectedTickets, event, total } = state;
+  const { selectedTickets, event, total, ticketTypes } = state;
   const totalCount = Object.values(selectedTickets).reduce((a, b) => a + b, 0);
 
   const handleCheckout = async () => {
@@ -44,8 +44,19 @@ export default function Payment() {
         return;
       }
 
-      // 2. Pick `n` available tickets to fulfill the order
-      const ticketsToBook = availableTickets.slice(0, totalCount);
+      // 2. Pick `n` available tickets to fulfill the order based on selected types
+      const ticketsToBook = [];
+      for (const [typeId, qty] of Object.entries(selectedTickets)) {
+        if (qty > 0) {
+          const zoneTickets = availableTickets.filter(t => t.zone_id === Number(typeId));
+          if (zoneTickets.length < qty) {
+             toast.error(`Rất tiếc! Không đủ vé trong khu vực bạn chọn.`);
+             setLoading(false);
+             return;
+          }
+          ticketsToBook.push(...zoneTickets.slice(0, qty));
+        }
+      }
 
       // 3. Call book API for each ticket
       for (const ticket of ticketsToBook) {
@@ -53,6 +64,36 @@ export default function Payment() {
           user_id: user.username,
           ticket_id: ticket.id
         });
+      }
+
+      // 4. Send Email Notification
+      if (user.email) {
+        try {
+          const emailBody = `
+            <div style="font-family: Arial, sans-serif; padding: 20px; max-width: 600px; margin: 0 auto; color: #333;">
+              <h2 style="color: #2ecc71;">Thanh toán thành công!</h2>
+              <p>Chào <strong>${user.full_name || user.username}</strong>,</p>
+              <p>Bạn đã mua thành công <strong>${totalCount} vé</strong> cho sự kiện <strong>${event.name}</strong>.</p>
+              <p><strong>Thông tin sự kiện:</strong></p>
+              <ul style="line-height: 1.5;">
+                <li><strong>Thời gian:</strong> ${event.date} | 20:00</li>
+                <li><strong>Địa điểm:</strong> ${event.location}</li>
+                <li><strong>Tổng tiền:</strong> ${total.toLocaleString('vi-VN')} đ</li>
+              </ul>
+              <p>Vui lòng đăng nhập vào ứng dụng để xem chi tiết vé và nhận mã QR tại mục <em>Vé của tôi</em>.</p>
+              <p>Trân trọng,<br>Ticket Booking Team</p>
+            </div>
+          `;
+          
+          await notificationApi.post('/send-email', {
+            to_email: user.email,
+            subject: `Xác nhận đặt vé thành công: ${event.name}`,
+            body: emailBody
+          });
+        } catch (emailErr) {
+          console.error('Failed to send email notification', emailErr);
+          // Không chặn quá trình đặt vé nếu lỗi gửi mail
+        }
       }
 
       // Giả lập thanh toán thành công mất 2s
@@ -118,10 +159,16 @@ export default function Payment() {
             <h3 className="font-bold text-gray-700 uppercase text-sm tracking-wider">Chi tiết vé</h3>
             {Object.entries(selectedTickets).map(([typeId, qty]) => {
               if (qty === 0) return null;
-              let name, price;
-              if (typeId === 'vip') { name = 'VIP (Khu V)'; price = 2500000; }
-              if (typeId === 'ga') { name = 'GA (Khu G)'; price = 1500000; }
-              if (typeId === 'standard') { name = 'Standard (Khu S)'; price = 700000; }
+              let name = `Khu vực #${typeId}`;
+              let price = 0;
+              
+              if (ticketTypes) {
+                const typeInfo = ticketTypes.find(t => t.id === typeId);
+                if (typeInfo) {
+                  name = typeInfo.name;
+                  price = typeInfo.price;
+                }
+              }
               
               return (
                 <div key={typeId} className="flex justify-between items-center text-gray-700">

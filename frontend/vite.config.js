@@ -31,6 +31,11 @@ export default defineConfig({
             target: 'http://localhost:8081',
             changeOrigin: true,
             rewrite: (path) => path.replace(/^\/api\/inventory/, '')
+        },
+        '/api/notification': {
+            target: 'http://localhost:8086',
+            changeOrigin: true,
+            rewrite: (path) => path.replace(/^\/api\/notification/, '')
         }
     }
   }

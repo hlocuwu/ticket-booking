@@ -14,7 +14,8 @@ import (
 type Ticket struct {
         ID         int    `json:"id"`
         EventID    int    `json:"event_id"`
-        SeatName   string `json:"seat_name"`
+        ZoneID     int    `json:"zone_id"`
+	SeatName   string `json:"seat_name"`
         IsReserved bool   `json:"is_reserved"`
 }
 
@@ -69,7 +70,7 @@ func main() {
         })
 
         router.GET("/tickets", func(c *gin.Context) {
-                rows, err := db.Query("SELECT id, event_id, seat_name, is_reserved FROM tickets")
+                rows, err := db.Query("SELECT id, event_id, zone_id, seat_name, is_reserved FROM tickets")
                 if err != nil {
                         log.Printf("Database error: %v", err)
                         c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch tickets"})
@@ -80,7 +81,7 @@ func main() {
                 var tickets []Ticket
                 for rows.Next() {
                         var t Ticket
-                        if err := rows.Scan(&t.ID, &t.EventID, &t.SeatName, &t.IsReserved); err != nil {
+                        if err := rows.Scan(&t.ID, &t.EventID, &t.ZoneID, &t.SeatName, &t.IsReserved); err != nil {
                                 continue
                         }
                         tickets = append(tickets, t)

@@ -11,6 +11,7 @@ export default function EventDetails() {
   const { user } = useContext(AuthContext);
   
   const [event, setEvent] = useState(null);
+  const [ticketTypes, setTicketTypes] = useState([]);
   
   const [queueStatus, setQueueStatus] = useState('NOT_JOINED'); // NOT_JOINED, IN_QUEUE, TURN_ARRIVED
   const [queuePosition, setQueuePosition] = useState(null);
@@ -29,7 +30,20 @@ export default function EventDetails() {
   useEffect(() => {
     // Fetch Event Details
     eventApi.get(`/events/${id}`)
-      .then(res => setEvent(res.data))
+      .then(res => {
+        setEvent(res.data);
+        return eventApi.get(`/events/${id}/zones`);
+      })
+      .then(res => {
+        const colors = ['bg-yellow-500', 'bg-blue-500', 'bg-green-500', 'bg-purple-500', 'bg-pink-500'];
+        const mappedZ = res.data.map((z, idx) => ({
+           id: z.id.toString(),
+           name: z.name,
+           price: z.price,
+           color: colors[idx % colors.length]
+        }));
+        setTicketTypes(mappedZ);
+      })
       .catch(err => {
         console.error(err);
         toast.error('Failed to load event details');
@@ -58,12 +72,10 @@ export default function EventDetails() {
         const res = await inventoryApi.get('/tickets');
         const ticketsForEvent = res.data.filter(t => t.event_id === Number(id) && !t.is_reserved);
         
-        const counts = { vip: 0, ga: 0, standard: 0 };
+        const counts = {};
         ticketsForEvent.forEach(t => {
-          const name = t.seat_name.toUpperCase();
-          if (name.includes('VIP')) counts.vip++;
-          else if (name.includes('G') || name.includes('A')) counts.ga++;
-          else counts.standard++; // Anything else matches Standard
+          const zoneId = t.zone_id ? t.zone_id.toString() : null;
+          if(zoneId) counts[zoneId] = (counts[zoneId] || 0) + 1;
         });
         setAvailableCounts(counts);
       } catch (err) {
@@ -81,11 +93,6 @@ export default function EventDetails() {
       }
     }, [queueStatus, fetchInventory]);
 
-  const ticketTypes = [
-    { id: 'vip', name: 'VIP (Khu V)', price: 2500000, color: 'bg-yellow-500' },
-    { id: 'ga', name: 'GA (Khu G)', price: 1500000, color: 'bg-blue-500' },
-    { id: 'standard', name: 'Standard (Khu S)', price: 700000, color: 'bg-green-500' },
-  ];
 
   const handleQuantityChange = (typeId, delta) => {
     setSelectedTickets(prev => {
@@ -108,7 +115,7 @@ export default function EventDetails() {
 
   const handleCheckout = () => {
     if (calculateTotal() > 0) {
-      navigate('/payment', { state: { selectedTickets, event, total: calculateTotal() } });
+      navigate('/payment', { state: { selectedTickets, event, total: calculateTotal(), ticketTypes } });
     } else {
       toast.error('Vui lòng chọn ít nhất 1 vé');
     }
@@ -243,14 +250,18 @@ export default function EventDetails() {
             <h2 className="text-lg uppercase font-medium tracking-wide mb-4">{event.name}</h2>
             
             <div className={`text-lg md:text-xl max-w-2xl mx-auto leading-loose whitespace-pre-line text-left md:text-center font-light overflow-hidden transition-all duration-500 ease-in-out ${isExpanded ? 'max-h-[1000px]' : 'max-h-[8rem]'}`}>
-              Tôi ổn.<br/>
-              Nghe quen không?<br/><br/>
-              90% mọi người nói câu này... đều đang nói dối.<br/><br/>
-              {event.name.toUpperCase()}<br/>
-              {event.date}<br/>
-              {event.location}<br/><br/>
-              Đến đây cùng tôi, nghe sự thật một lần.<br/>
-              Rồi để gió cuốn đi.
+              {event.description ? event.description : (
+                <>
+                  Tôi ổn.<br/>
+                  Nghe quen không?<br/><br/>
+                  90% mọi người nói câu này... đều đang nói dối.<br/><br/>
+                  {event.name.toUpperCase()}<br/>
+                  {event.date}<br/>
+                  {event.location}<br/><br/>
+                  Đến đây cùng tôi, nghe sự thật một lần.<br/>
+                  Rồi để gió cuốn đi.
+                </>
+              )}
             </div>
 
             <div className="mt-4 flex justify-center pt-2">

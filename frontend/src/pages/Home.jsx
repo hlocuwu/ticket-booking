@@ -37,16 +37,23 @@ export default function Home() {
     };
     
     fetchEvents();
-      
-    // 2. Auto-slide logic for banner
-    const timer = setInterval(() => {
-      setCurrentBanner((prev) => (prev + 1) % MOCK_BANNERS.length);
-    }, 5000);
-    return () => clearInterval(timer);
   }, [searchQuery]);
 
-  const nextBanner = () => setCurrentBanner((prev) => (prev + 1) % MOCK_BANNERS.length);
-  const prevBanner = () => setCurrentBanner((prev) => (prev - 1 + MOCK_BANNERS.length) % MOCK_BANNERS.length);
+  // Use dynamically loaded events as banners, fallback to MOCK_BANNERS if no events
+  const banners = events.length > 0
+    ? events.slice(0, 3).map((event) => ({ id: event.id, image: event.image_url, title: event.name }))
+    : MOCK_BANNERS;
+
+  useEffect(() => {
+    // 2. Auto-slide logic for banner
+    const timer = setInterval(() => {
+      setCurrentBanner((prev) => (prev + 1) % banners.length);
+    }, 5000);
+    return () => clearInterval(timer);
+  }, [banners.length]);
+
+  const nextBanner = () => setCurrentBanner((prev) => (prev + 1) % banners.length);
+  const prevBanner = () => setCurrentBanner((prev) => (prev - 1 + banners.length) % banners.length);
 
   return (
     <div className="bg-[#f0f2f5] min-h-screen">
@@ -54,7 +61,7 @@ export default function Home() {
       <div className="relative w-full max-w-[1400px] mx-auto mt-6 px-4">
         <div className="relative w-full rounded-2xl overflow-hidden shadow-2xl aspect-[21/9] lg:aspect-[25/8] bg-gray-200">
           
-          {MOCK_BANNERS.map((banner, index) => (
+          {banners.map((banner, index) => (
             <div 
               key={banner.id}
               className={`absolute inset-0 transition-opacity duration-[800ms] ease-in-out ${index === currentBanner ? 'opacity-100 z-10' : 'opacity-0 z-0'}`}
@@ -79,7 +86,7 @@ export default function Home() {
 
           {/* Indicator Dots */}
           <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-20 flex items-center space-x-3">
-            {MOCK_BANNERS.map((_, idx) => (
+            {banners.map((_, idx) => (
               <button 
                 key={idx} 
                 onClick={() => setCurrentBanner(idx)}
