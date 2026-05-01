@@ -185,6 +185,8 @@ export default function EventDetails() {
     </div>
   );
 
+  const minPrice = ticketTypes.length > 0 ? Math.min(...ticketTypes.map(t => t.price)) : 0;
+
   return (
     <div className="bg-[#1b1c21] min-h-screen pt-8 pb-16 text-white font-sans w-full absolute left-0 top-16 right-0 overflow-x-hidden">
       <div className="w-[95%] max-w-[120rem] mx-auto space-y-8 px-4 mt-8">
@@ -198,14 +200,14 @@ export default function EventDetails() {
                 <div className="flex items-start">
                   <Calendar className="mr-3 w-5 h-5 mt-1 shrink-0" />
                   <div className="text-[#2ecc71] font-semibold text-lg">
-                    {`20:00 - 22:00, ${event.date}`}
+                    {`${event.time || '20:00 - 22:00'}, ${event.date}`}
                   </div>
                 </div>
                 <div className="flex items-start">
                   <MapPin className="mr-3 w-5 h-5 mt-1 shrink-0" />
                   <div>
                     <div className="text-[#2ecc71] font-semibold text-lg">{event.location}</div>
-                    <div className="text-[#d2d4dc] text-sm mt-1">Đang cập nhật địa chỉ chi tiết...</div>
+                    <div className="text-[#d2d4dc] text-sm mt-1">{event.address || 'Đang cập nhật địa chỉ chi tiết...'}</div>
                   </div>
                 </div>
               </div>
@@ -214,7 +216,7 @@ export default function EventDetails() {
             <div className="mt-auto pt-4 border-t border-[#464855]">
                <div className="flex items-baseline mb-6">
                  <span className="text-xl font-bold mr-2 text-white">Giá từ</span>
-                 <span className="text-[#2ecc71] text-2xl font-bold">700.000 đ {'>'}</span>
+                 <span className="text-[#2ecc71] text-2xl font-bold">{minPrice > 0 ? minPrice.toLocaleString('vi-VN') : '---'} đ {'>'}</span>
                </div>
                
                {queueStatus === 'NOT_JOINED' ? (
@@ -277,8 +279,9 @@ export default function EventDetails() {
         </div>
 
         {/* Queue and Booking Logic UI - Below */}
-        <div className="bg-[#31333e] rounded-xl p-8 mt-8 shadow-2xl border border-[#454756] min-h-[300px]">
-          {queueStatus === 'NOT_JOINED' && (
+        {user && (
+          <div className="bg-[#31333e] rounded-xl p-8 mt-8 shadow-2xl border border-[#454756] min-h-[300px]">
+            {queueStatus === 'NOT_JOINED' && (
             <div className="text-center text-gray-400 py-12 flex flex-col items-center justify-center h-full">
                <Ticket size={48} className="mb-4 text-[#454756]" />
                <p className="text-xl">Vui lòng click "Mua vé ngay" ở trên để xếp hàng chờ mua vé.</p>
@@ -385,6 +388,7 @@ export default function EventDetails() {
             </div>
           )}
         </div>
+        )}
 
       </div>
 

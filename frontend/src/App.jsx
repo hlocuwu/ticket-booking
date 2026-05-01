@@ -12,7 +12,7 @@ import { Toaster } from 'react-hot-toast';
 
 function App() {
   return (
-    <div className="min-h-screen bg-[#f0f2f5] flex flex-col font-sans">
+    <div className="min-h-screen bg-[#1b1c21] flex flex-col font-sans">
       <Navbar />
       <main className="flex-grow w-full">
         <Routes>
@@ -21,11 +21,7 @@ function App() {
           <Route path="/register" element={<div className="max-w-7xl mx-auto px-4 py-8"><Register /></div>} />
           <Route 
             path="/event/:id" 
-            element={
-              <ProtectedRoute>
-                <div className="max-w-7xl mx-auto px-4 py-8"><EventDetails /></div>
-              </ProtectedRoute>
-            } 
+            element={<div className="max-w-7xl mx-auto px-4 py-8"><EventDetails /></div>} 
           />
           
           <Route 

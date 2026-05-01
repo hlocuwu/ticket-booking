@@ -56,10 +56,10 @@ export default function Home() {
   const prevBanner = () => setCurrentBanner((prev) => (prev - 1 + banners.length) % banners.length);
 
   return (
-    <div className="bg-[#f0f2f5] min-h-screen">
+    <div className="bg-[#1b1c21] min-h-screen text-white">
       {/* ================= BANNER HERO SLIDER ================= */}
       <div className="relative w-full max-w-[1400px] mx-auto mt-6 px-4">
-        <div className="relative w-full rounded-2xl overflow-hidden shadow-2xl aspect-[16/9] lg:aspect-[21/9] bg-gray-200">
+        <div className="relative w-full rounded-2xl overflow-hidden shadow-2xl aspect-[16/9] lg:aspect-[21/9] bg-[#31333e]">
           
           {banners.map((banner, index) => (
             <div 
@@ -107,20 +107,20 @@ export default function Home() {
         
         {/* Section Header */}
         <div className="flex items-center mb-8">
-          <h2 className="text-[26px] font-extrabold text-gray-900 tracking-tight flex items-center gap-3">
+          <h2 className="text-[26px] font-extrabold text-white tracking-tight flex items-center gap-3">
             <div className="w-2 h-8 bg-[#00b14f] rounded-lg"></div> {/* Green accent line */}
             {searchQuery ? `KẾT QUẢ TÌM KIẾM: "${searchQuery}"` : 'SỰ KIỆN NỔI BẬT'}
           </h2>
         </div>
         
         {loading ? (
-          <div className="flex flex-col justify-center items-center py-32 text-gray-500">
-            <div className="w-12 h-12 border-4 border-gray-200 border-t-[#00b14f] rounded-full animate-spin mb-4"></div>
+          <div className="flex flex-col justify-center items-center py-32 text-gray-400">
+            <div className="w-12 h-12 border-4 border-[#31333e] border-t-[#00b14f] rounded-full animate-spin mb-4"></div>
             <p className="font-medium text-lg">Đang tải sự kiện thú vị...</p>
           </div>
         ) : events.length === 0 ? (
-          <div className="flex flex-col justify-center items-center py-32 text-gray-500">
-            <SearchX size={64} className="text-gray-300 mb-4" />
+          <div className="flex flex-col justify-center items-center py-32 text-gray-400">
+            <SearchX size={64} className="text-[#454756] mb-4" />
             <p className="font-medium text-lg">Không tìm thấy sự kiện nào phù hợp!</p>
             {searchQuery && (
               <Link to="/" className="mt-4 text-[#00b14f] hover:underline font-semibold">
@@ -134,10 +134,10 @@ export default function Home() {
               <Link 
                 to={`/event/${event.id}`} 
                 key={event.id}
-                className="group bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-[0_8px_30px_rgb(0,0,0,0.12)] transition-all duration-300 transform hover:-translate-y-1.5 flex flex-col h-full border border-gray-100"
+                className="group bg-[#31333e] rounded-xl overflow-hidden shadow-sm hover:shadow-[0_8px_30px_rgb(0,0,0,0.5)] transition-all duration-300 transform hover:-translate-y-1.5 flex flex-col h-full border border-[#454756]"
               >
                 {/* Event Image */}
-                <div className="aspect-[16/9] w-full bg-gray-200 overflow-hidden relative">
+                <div className="aspect-[16/9] w-full bg-[#1b1c21] overflow-hidden relative">
                   <img 
                     src={event.image_url || 'https://images.unsplash.com/photo-1459749411175-04bf5292ceea?auto=format&fit=crop&w=600&q=80'} 
                     alt={event.name} 
@@ -151,17 +151,17 @@ export default function Home() {
 
                 {/* Event Details Card */}
                 <div className="p-5 flex flex-col flex-grow">
-                  <h3 className="font-bold text-gray-900 text-lg line-clamp-2 leading-snug mb-4 group-hover:text-[#00b14f] transition-colors">
+                  <h3 className="font-bold text-white text-lg line-clamp-2 leading-snug mb-4 group-hover:text-[#00b14f] transition-colors">
                     {event.name}
                   </h3>
                   
-                  <div className="mt-auto space-y-2.5 text-[15px] text-gray-600 font-medium">
+                  <div className="mt-auto space-y-2.5 text-[15px] text-[#d2d4dc] font-medium">
                     <div className="flex items-start gap-2.5">
-                      <Calendar size={18} className="text-gray-400 mt-0.5 shrink-0" />
+                      <Calendar size={18} className="text-[#8c8f9b] mt-0.5 shrink-0" />
                       <span className="truncate">{event.date}</span>
                     </div>
                     <div className="flex items-start gap-2.5">
-                      <MapPin size={18} className="text-gray-400 mt-0.5 shrink-0" />
+                      <MapPin size={18} className="text-[#8c8f9b] mt-0.5 shrink-0" />
                       <span className="line-clamp-1">{event.location}</span>
                     </div>
                   </div>
