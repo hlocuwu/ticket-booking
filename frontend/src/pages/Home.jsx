@@ -27,7 +27,16 @@ export default function Home() {
       
       try {
         const res = await eventApi.get(endpoint);
-        setEvents(res.data || []);
+        const raw = res.data || [];
+        const today = new Date(new Date().toDateString());
+        // Sort: upcoming first, past last
+        const sorted = [...raw].sort((a, b) => {
+          const aPast = new Date(a.date) < today;
+          const bPast = new Date(b.date) < today;
+          if (aPast === bPast) return new Date(a.date) - new Date(b.date);
+          return aPast ? 1 : -1;
+        });
+        setEvents(sorted);
       } catch (err) {
         console.error(err);
         toast.error('Có lỗi xảy ra khi tải danh sách sự kiện');
@@ -39,9 +48,10 @@ export default function Home() {
     fetchEvents();
   }, [searchQuery]);
 
-  // Use dynamically loaded events as banners, fallback to MOCK_BANNERS if no events
-  const banners = events.length > 0
-    ? events.map((event) => ({ id: event.id, image: event.image_url, title: event.name }))
+  // Banner chỉ dùng upcoming events; fallback to MOCK_BANNERS nếu không có
+  const upcomingEvents = events.filter(e => new Date(e.date) >= new Date(new Date().toDateString()));
+  const banners = upcomingEvents.length > 0
+    ? upcomingEvents.map((event) => ({ id: event.id, image: event.image_url, title: event.name }))
     : MOCK_BANNERS;
 
   useEffect(() => {
@@ -130,44 +140,56 @@ export default function Home() {
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 lg:gap-8">
-            {events.map((event, idx) => (
-              <Link 
-                to={`/event/${event.id}`} 
-                key={event.id}
-                className="group bg-[#31333e] rounded-xl overflow-hidden shadow-sm hover:shadow-[0_8px_30px_rgb(0,0,0,0.5)] transition-all duration-300 transform hover:-translate-y-1.5 flex flex-col h-full border border-[#454756]"
-              >
-                {/* Event Image */}
-                <div className="aspect-[16/9] w-full bg-[#1b1c21] overflow-hidden relative">
-                  <img 
-                    src={event.image_url || 'https://images.unsplash.com/photo-1459749411175-04bf5292ceea?auto=format&fit=crop&w=600&q=80'} 
-                    alt={event.name} 
-                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-                  />
-                  {/* Status badge: Mới mở bán */}
-                  <div className="absolute top-3 left-3 bg-[#00b14f] text-white text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded shadow-sm">
-                    Hot
-                  </div>
-                </div>
+            {events.map((event) => {
+              const isPast = new Date(event.date) < new Date(new Date().toDateString());
 
-                {/* Event Details Card */}
-                <div className="p-5 flex flex-col flex-grow">
-                  <h3 className="font-bold text-white text-lg line-clamp-2 leading-snug mb-4 group-hover:text-[#00b14f] transition-colors">
-                    {event.name}
-                  </h3>
-                  
-                  <div className="mt-auto space-y-2.5 text-[15px] text-[#d2d4dc] font-medium">
-                    <div className="flex items-start gap-2.5">
-                      <Calendar size={18} className="text-[#8c8f9b] mt-0.5 shrink-0" />
-                      <span className="truncate">{event.date}</span>
-                    </div>
-                    <div className="flex items-start gap-2.5">
-                      <MapPin size={18} className="text-[#8c8f9b] mt-0.5 shrink-0" />
-                      <span className="line-clamp-1">{event.location}</span>
+              return (
+                <Link
+                  to={`/event/${event.id}`}
+                  key={event.id}
+                  className={isPast
+                    ? "group bg-[#31333e] rounded-xl overflow-hidden shadow-sm flex flex-col h-full border border-[#454756] opacity-60 transition-all duration-300"
+                    : "group bg-[#31333e] rounded-xl overflow-hidden shadow-sm hover:shadow-[0_8px_30px_rgb(0,0,0,0.5)] transition-all duration-300 transform hover:-translate-y-1.5 flex flex-col h-full border border-[#454756]"}
+                >
+                  {/* Event Image */}
+                  <div className="aspect-[16/9] w-full bg-[#1b1c21] overflow-hidden relative">
+                    <img 
+                      src={event.image_url || 'https://images.unsplash.com/photo-1459749411175-04bf5292ceea?auto=format&fit=crop&w=600&q=80'} 
+                      alt={event.name} 
+                      className={`w-full h-full object-cover transition-transform duration-700 ${isPast ? 'grayscale' : 'group-hover:scale-110'}`}
+                    />
+                    {/* Status badge */}
+                    {isPast ? (
+                      <div className="absolute top-3 left-3 bg-[#454756] text-gray-300 text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded shadow-sm">
+                        Đã diễn ra
+                      </div>
+                    ) : (
+                      <div className="absolute top-3 left-3 bg-[#00b14f] text-white text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded shadow-sm">
+                        Hot
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Event Details Card */}
+                  <div className="p-5 flex flex-col flex-grow">
+                    <h3 className={`font-bold text-lg line-clamp-2 leading-snug mb-4 transition-colors ${isPast ? 'text-gray-500' : 'text-white group-hover:text-[#00b14f]'}`}>
+                      {event.name}
+                    </h3>
+                    
+                    <div className="mt-auto space-y-2.5 text-[15px] text-[#d2d4dc] font-medium">
+                      <div className="flex items-start gap-2.5">
+                        <Calendar size={18} className="text-[#8c8f9b] mt-0.5 shrink-0" />
+                        <span className="truncate">{event.date}</span>
+                      </div>
+                      <div className="flex items-start gap-2.5">
+                        <MapPin size={18} className="text-[#8c8f9b] mt-0.5 shrink-0" />
+                        <span className="line-clamp-1">{event.location}</span>
+                      </div>
                     </div>
                   </div>
-                </div>
-              </Link>
-            ))}
+                </Link>
+              );
+            })}
           </div>
         )}
       </div>

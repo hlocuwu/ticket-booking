@@ -19,10 +19,27 @@ export default function EventDetails() {
   const [loading, setLoading] = useState(true);
   const [isExpanded, setIsExpanded] = useState(false);
   
-  const [timeLeft, setTimeLeft] = useState(300);
-  const [selectedTickets, setSelectedTickets] = useState({});
+  const SESSION_KEY = `queueSession_${id}`;
+  const TOTAL_SECONDS = 300;
+
+  // Restore session from sessionStorage on mount
+  const getRestoredState = () => {
+    try {
+      const saved = JSON.parse(sessionStorage.getItem(SESSION_KEY));
+      if (saved && saved.startTimestamp) {
+        const elapsed = Math.floor((Date.now() - saved.startTimestamp) / 1000);
+        const remaining = TOTAL_SECONDS - elapsed;
+        if (remaining > 0) return { timeLeft: remaining, selectedTickets: saved.selectedTickets || {} };
+      }
+    } catch (_) {}
+    return null;
+  };
+
+  const restored = getRestoredState();
+  const [timeLeft, setTimeLeft] = useState(restored ? restored.timeLeft : TOTAL_SECONDS);
+  const [selectedTickets, setSelectedTickets] = useState(restored ? restored.selectedTickets : {});
   const [showImageModal, setShowImageModal] = useState(false);
-  const [availableCounts, setAvailableCounts] = useState({ vip: 0, ga: 0, standard: 0 });
+  const [availableCounts, setAvailableCounts] = useState({});
 
   const pollInterval = useRef(null);
   const inventoryPollInterval = useRef(null);
@@ -50,6 +67,13 @@ export default function EventDetails() {
       })
       .finally(() => setLoading(false));
 
+    // If returning from Payment (session still valid), restore TURN_ARRIVED state
+    const saved = (() => { try { return JSON.parse(sessionStorage.getItem(`queueSession_${id}`)); } catch(_){return null;} })();
+    if (saved && saved.startTimestamp) {
+      const elapsed = Math.floor((Date.now() - saved.startTimestamp) / 1000);
+      if (TOTAL_SECONDS - elapsed > 0) setQueueStatus('TURN_ARRIVED');
+    }
+
     return () => clearInterval(pollInterval.current);
   }, [id]);
 
@@ -60,13 +84,25 @@ export default function EventDetails() {
         setTimeLeft(prev => prev - 1);
       }, 1000);
     } else if (timeLeft === 0 && queueStatus === 'TURN_ARRIVED') {
+      // Session expired
+      sessionStorage.removeItem(SESSION_KEY);
       toast.error('Đã hết thời gian thao tác!');
       setQueueStatus('NOT_JOINED');
-      setTimeLeft(300);
+      setTimeLeft(TOTAL_SECONDS);
       setSelectedTickets({});
     }
     return () => clearInterval(timer);
   }, [queueStatus, timeLeft]);
+
+  // Persist selectedTickets into sessionStorage whenever they change during active session
+  useEffect(() => {
+    if (queueStatus === 'TURN_ARRIVED') {
+      try {
+        const saved = JSON.parse(sessionStorage.getItem(SESSION_KEY) || '{}');
+        sessionStorage.setItem(SESSION_KEY, JSON.stringify({ ...saved, selectedTickets }));
+      } catch (_) {}
+    }
+  }, [selectedTickets, queueStatus]);
     const fetchInventory = useCallback(async () => {
       try {
         const res = await inventoryApi.get('/tickets');
@@ -115,7 +151,13 @@ export default function EventDetails() {
 
   const handleCheckout = () => {
     if (calculateTotal() > 0) {
-      navigate('/payment', { state: { selectedTickets, event, total: calculateTotal(), ticketTypes } });
+      // Read startTimestamp from sessionStorage to pass along to Payment
+      let startTimestamp = null;
+      try {
+        const saved = JSON.parse(sessionStorage.getItem(SESSION_KEY));
+        startTimestamp = saved?.startTimestamp ?? null;
+      } catch (_) {}
+      navigate('/payment', { state: { selectedTickets, event, total: calculateTotal(), ticketTypes, startTimestamp } });
     } else {
       toast.error('Vui lòng chọn ít nhất 1 vé');
     }
@@ -145,7 +187,11 @@ export default function EventDetails() {
         setQueuePosition(res.data.position);
         
         if (res.data.position <= 5) {
+          // Save session to sessionStorage so timer survives navigation
+          const startTimestamp = Date.now();
+          sessionStorage.setItem(SESSION_KEY, JSON.stringify({ eventId: id, startTimestamp, selectedTickets: {} }));
           setQueueStatus('TURN_ARRIVED');
+          setTimeLeft(TOTAL_SECONDS);
           clearInterval(pollInterval.current);
           toast.success('Đã đến lượt của bạn! Xin mời chọn ghế.');
         }
@@ -186,6 +232,7 @@ export default function EventDetails() {
   );
 
   const minPrice = ticketTypes.length > 0 ? Math.min(...ticketTypes.map(t => t.price)) : 0;
+  const isPast = event.date ? new Date(event.date) < new Date(new Date().toDateString()) : false;
 
   return (
     <div className="bg-[#1b1c21] min-h-screen pt-8 pb-16 text-white font-sans w-full absolute left-0 top-16 right-0 overflow-x-hidden">
@@ -219,7 +266,11 @@ export default function EventDetails() {
                  <span className="text-[#2ecc71] text-2xl font-bold">{minPrice > 0 ? minPrice.toLocaleString('vi-VN') : '---'} đ {'>'}</span>
                </div>
                
-               {queueStatus === 'NOT_JOINED' ? (
+               {isPast ? (
+                 <div className="w-full bg-[#2a2c36] border border-[#454756] text-gray-400 font-bold py-3 rounded-lg text-lg text-center">
+                   Sự kiện đã kết thúc
+                 </div>
+               ) : queueStatus === 'NOT_JOINED' ? (
                  <button 
                    onClick={joinQueue}
                    className="w-full bg-[#2ecc71] hover:bg-[#27ae60] text-white font-bold py-3 rounded-lg text-lg transition-colors shadow-lg"
@@ -279,7 +330,7 @@ export default function EventDetails() {
         </div>
 
         {/* Queue and Booking Logic UI - Below */}
-        {user && (
+        {user && !isPast && (
           <div className="bg-[#31333e] rounded-xl p-8 mt-8 shadow-2xl border border-[#454756] min-h-[300px]">
             {queueStatus === 'NOT_JOINED' && (
             <div className="text-center text-gray-400 py-12 flex flex-col items-center justify-center h-full">

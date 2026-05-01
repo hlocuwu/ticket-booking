@@ -6,19 +6,18 @@ import (
 	"log"
 	"net/http"
 	"os"
-
 	"github.com/gin-gonic/gin"
 	_ "github.com/lib/pq"
 )
 
 // Define the Event model
-// Define the Event model
-// Define the Event model
 type Event struct {
 	ID          int    `json:"id"`
 	Name        string `json:"name"`
+	Time        string `json:"time"`
 	Date        string `json:"date"`
 	Location    string `json:"location"`
+	Address     string `json:"address"`
 	TotalSpaces int    `json:"total_spaces"`
 	ImageUrl    string `json:"image_url"`
 	MapUrl      string `json:"map_url"`
@@ -64,11 +63,11 @@ func main() {
 		var dbErr error
 
 		if searchQuery != "" {
-			query = "SELECT id, name, TO_CHAR(date, 'YYYY-MM-DD'), location, total_spaces, COALESCE(image_url, ''), COALESCE(map_url, ''), COALESCE(description, '') FROM events WHERE name ILIKE $1 OR location ILIKE $1 ORDER BY id ASC"
+			query = "SELECT id, name, COALESCE(time, ''), TO_CHAR(date, 'YYYY-MM-DD'), location, COALESCE(address, ''), total_spaces, COALESCE(image_url, ''), COALESCE(map_url, ''), COALESCE(description, '') FROM events WHERE name ILIKE $1 OR location ILIKE $1 ORDER BY id ASC"
 			wildcardSearch := "%" + searchQuery + "%"
 			rows, dbErr = db.Query(query, wildcardSearch)
 		} else {
-			query = "SELECT id, name, TO_CHAR(date, 'YYYY-MM-DD'), location, total_spaces, COALESCE(image_url, ''), COALESCE(map_url, ''), COALESCE(description, '') FROM events ORDER BY id ASC"
+			query = "SELECT id, name, COALESCE(time, ''), TO_CHAR(date, 'YYYY-MM-DD'), location, COALESCE(address, ''), total_spaces, COALESCE(image_url, ''), COALESCE(map_url, ''), COALESCE(description, '') FROM events ORDER BY id ASC"
 			rows, dbErr = db.Query(query)
 		}
 
@@ -82,7 +81,7 @@ func main() {
 		var events []Event
 		for rows.Next() {
 			var ev Event
-			if err := rows.Scan(&ev.ID, &ev.Name, &ev.Date, &ev.Location, &ev.TotalSpaces, &ev.ImageUrl, &ev.MapUrl, &ev.Description); err != nil {
+			if err := rows.Scan(&ev.ID, &ev.Name, &ev.Time, &ev.Date, &ev.Location, &ev.Address, &ev.TotalSpaces, &ev.ImageUrl, &ev.MapUrl, &ev.Description); err != nil {
 				log.Printf("Row scan error: %v", err)
 				continue
 			}
@@ -100,11 +99,11 @@ func main() {
 	router.GET("/events/:id", func(c *gin.Context) {
 		idParam := c.Param("id")
 
-		query := "SELECT id, name, TO_CHAR(date, 'YYYY-MM-DD'), location, total_spaces, COALESCE(image_url, ''), COALESCE(map_url, ''), COALESCE(description, '') FROM events WHERE id = $1"
+		query := "SELECT id, name, COALESCE(time, ''), TO_CHAR(date, 'YYYY-MM-DD'), location, COALESCE(address, ''), total_spaces, COALESCE(image_url, ''), COALESCE(map_url, ''), COALESCE(description, '') FROM events WHERE id = $1"
 		row := db.QueryRow(query, idParam)
 
 		var ev Event
-		err := row.Scan(&ev.ID, &ev.Name, &ev.Date, &ev.Location, &ev.TotalSpaces, &ev.ImageUrl, &ev.MapUrl, &ev.Description)
+		err := row.Scan(&ev.ID, &ev.Name, &ev.Time, &ev.Date, &ev.Location, &ev.Address, &ev.TotalSpaces, &ev.ImageUrl, &ev.MapUrl, &ev.Description)
 		if err != nil {
 			if err == sql.ErrNoRows {
 				c.JSON(http.StatusNotFound, gin.H{"error": "Event not found"})
@@ -198,7 +197,7 @@ var newEventID int
 err = tx.QueryRow(`
 INSERT INTO events (name, date, location, total_spaces, image_url, description) 
 VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
-req.Name, req.Date, req.Location, totalSpaces, req.ImageUrl, req.Description,
+			req.Name, req.Date, req.Location, totalSpaces, req.ImageUrl, req.Description,
 ).Scan(&newEventID)
 
 if err != nil {

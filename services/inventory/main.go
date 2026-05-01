@@ -24,6 +24,7 @@ type MyTicketInfo struct {
         EventID   int    `json:"event_id"`
         EventName string `json:"event_name"`
         Date      string `json:"date"`
+        Time      string `json:"time"`
         Location  string `json:"location"`
         SeatName  string `json:"seat_name"`
         ImageURL  string `json:"image_url"`
@@ -92,7 +93,7 @@ func main() {
         router.GET("/user/tickets/:user_id", func(c *gin.Context) {
                 userID := c.Param("user_id")
                 rows, err := db.Query(`
-                        SELECT t.id, t.event_id, e.name, TO_CHAR(e.date, 'YYYY-MM-DD'), e.location, t.seat_name, e.image_url
+                        SELECT t.id, t.event_id, e.name, TO_CHAR(e.date, 'YYYY-MM-DD'), COALESCE(e.time, ''), e.location, t.seat_name, COALESCE(e.image_url, '')
                         FROM tickets t
                         JOIN events e ON t.event_id = e.id
                         WHERE t.owner_id = $1
@@ -108,8 +109,7 @@ func main() {
                 var tickets []MyTicketInfo
                 for rows.Next() {
                         var t MyTicketInfo
-                        // Using TO_CHAR ensures standard string format without time. We can parse it directly safely.
-                        if err := rows.Scan(&t.ID, &t.EventID, &t.EventName, &t.Date, &t.Location, &t.SeatName, &t.ImageURL); err != nil {
+                        if err := rows.Scan(&t.ID, &t.EventID, &t.EventName, &t.Date, &t.Time, &t.Location, &t.SeatName, &t.ImageURL); err != nil {
                                 continue
                         }
                         tickets = append(tickets, t)
