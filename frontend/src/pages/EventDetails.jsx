@@ -318,7 +318,7 @@ export default function EventDetails() {
                      <ZoomIn className="text-white w-6 h-6" />
                    </div>
                    <img 
-                     src="https://images.unsplash.com/photo-1540575467063-178a50c2df87?auto=format&fit=crop&w=1200&q=80" 
+                     src={event.map_url || "https://images.unsplash.com/photo-1540575467063-178a50c2df87?auto=format&fit=crop&w=1200&q=80"}
                      alt="Sơ đồ sân khấu" 
                      className="w-full h-auto rounded-lg object-contain max-h-[600px] hover:scale-[1.02] transition-transform duration-300"
                    />
@@ -327,9 +327,9 @@ export default function EventDetails() {
 
                 {/* Danh sách các loại vé */}
                 <div className="lg:w-1/3 flex flex-col space-y-4">
-                  <div className="flex-1 space-y-3 overflow-y-auto pr-2 custom-scrollbar">
+                  <div className="flex-1 space-y-3 overflow-y-auto pr-2 custom-scrollbar" style={{ maxHeight: '600px', minHeight: '600px' }}>
                     {ticketTypes.map(type => (
-                      <div key={type.id} className="flex items-center justify-between bg-[#2a2c36] p-4 rounded-xl border border-[#454756] hover:border-[#2ecc71] transition-colors">
+                      <div key={type.id} className="flex items-center justify-between bg-[#2a2c36] p-4 rounded-xl border border-[#454756] hover:border-[#2ecc71] transition-colors shrink-0">
                         <div>
                           <div className="flex items-center gap-3 mb-1">
                              <div className={`w-4 h-4 rounded-full shadow-sm ${type.color}`}></div>
@@ -404,7 +404,7 @@ export default function EventDetails() {
             <X className="w-8 h-8" />
           </button>
           <img 
-            src="https://images.unsplash.com/photo-1540575467063-178a50c2df87?auto=format&fit=crop&w=2000&q=80" 
+            src={event.map_url || "https://images.unsplash.com/photo-1540575467063-178a50c2df87?auto=format&fit=crop&w=2000&q=80"}
             alt="Sơ đồ sân khấu phóng to" 
             className="max-w-[95vw] max-h-[95vh] object-contain rounded-lg shadow-2xl"
             onClick={(e) => e.stopPropagation()} // Prevent close when clicking the image itself

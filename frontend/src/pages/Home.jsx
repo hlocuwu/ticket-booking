@@ -41,7 +41,7 @@ export default function Home() {
 
   // Use dynamically loaded events as banners, fallback to MOCK_BANNERS if no events
   const banners = events.length > 0
-    ? events.slice(0, 3).map((event) => ({ id: event.id, image: event.image_url, title: event.name }))
+    ? events.map((event) => ({ id: event.id, image: event.image_url, title: event.name }))
     : MOCK_BANNERS;
 
   useEffect(() => {
@@ -59,12 +59,16 @@ export default function Home() {
     <div className="bg-[#f0f2f5] min-h-screen">
       {/* ================= BANNER HERO SLIDER ================= */}
       <div className="relative w-full max-w-[1400px] mx-auto mt-6 px-4">
-        <div className="relative w-full rounded-2xl overflow-hidden shadow-2xl aspect-[21/9] lg:aspect-[25/8] bg-gray-200">
+        <div className="relative w-full rounded-2xl overflow-hidden shadow-2xl aspect-[16/9] lg:aspect-[21/9] bg-gray-200">
           
           {banners.map((banner, index) => (
             <div 
               key={banner.id}
-              className={`absolute inset-0 transition-opacity duration-[800ms] ease-in-out ${index === currentBanner ? 'opacity-100 z-10' : 'opacity-0 z-0'}`}
+              style={{
+                opacity: index === currentBanner ? 1 : 0,
+                zIndex: index === currentBanner ? 10 : 0
+              }}
+              className="absolute inset-0 transition-opacity duration-[800ms] ease-in-out"
             >
               <img src={banner.image} alt={banner.title} className="w-full h-full object-cover" />
               {/* Optional Gradient overlay for readability */}
@@ -125,7 +129,7 @@ export default function Home() {
             )}
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 lg:gap-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 lg:gap-8">
             {events.map((event, idx) => (
               <Link 
                 to={`/event/${event.id}`} 
@@ -133,7 +137,7 @@ export default function Home() {
                 className="group bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-[0_8px_30px_rgb(0,0,0,0.12)] transition-all duration-300 transform hover:-translate-y-1.5 flex flex-col h-full border border-gray-100"
               >
                 {/* Event Image */}
-                <div className="aspect-[4/3] w-full bg-gray-200 overflow-hidden relative">
+                <div className="aspect-[16/9] w-full bg-gray-200 overflow-hidden relative">
                   <img 
                     src={event.image_url || 'https://images.unsplash.com/photo-1459749411175-04bf5292ceea?auto=format&fit=crop&w=600&q=80'} 
                     alt={event.name} 

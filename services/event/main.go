@@ -12,6 +12,8 @@ import (
 )
 
 // Define the Event model
+// Define the Event model
+// Define the Event model
 type Event struct {
 	ID          int    `json:"id"`
 	Name        string `json:"name"`
@@ -19,6 +21,7 @@ type Event struct {
 	Location    string `json:"location"`
 	TotalSpaces int    `json:"total_spaces"`
 	ImageUrl    string `json:"image_url"`
+	MapUrl      string `json:"map_url"`
 	Description string `json:"description"`
 }
 
@@ -61,11 +64,11 @@ func main() {
 		var dbErr error
 
 		if searchQuery != "" {
-			query = "SELECT id, name, TO_CHAR(date, 'YYYY-MM-DD'), location, total_spaces, COALESCE(image_url, ''), COALESCE(description, '') FROM events WHERE name ILIKE $1 OR location ILIKE $1 ORDER BY id ASC"
+			query = "SELECT id, name, TO_CHAR(date, 'YYYY-MM-DD'), location, total_spaces, COALESCE(image_url, ''), COALESCE(map_url, ''), COALESCE(description, '') FROM events WHERE name ILIKE $1 OR location ILIKE $1 ORDER BY id ASC"
 			wildcardSearch := "%" + searchQuery + "%"
 			rows, dbErr = db.Query(query, wildcardSearch)
 		} else {
-			query = "SELECT id, name, TO_CHAR(date, 'YYYY-MM-DD'), location, total_spaces, COALESCE(image_url, ''), COALESCE(description, '') FROM events ORDER BY id ASC"
+			query = "SELECT id, name, TO_CHAR(date, 'YYYY-MM-DD'), location, total_spaces, COALESCE(image_url, ''), COALESCE(map_url, ''), COALESCE(description, '') FROM events ORDER BY id ASC"
 			rows, dbErr = db.Query(query)
 		}
 
@@ -79,7 +82,7 @@ func main() {
 		var events []Event
 		for rows.Next() {
 			var ev Event
-			if err := rows.Scan(&ev.ID, &ev.Name, &ev.Date, &ev.Location, &ev.TotalSpaces, &ev.ImageUrl, &ev.Description); err != nil {
+			if err := rows.Scan(&ev.ID, &ev.Name, &ev.Date, &ev.Location, &ev.TotalSpaces, &ev.ImageUrl, &ev.MapUrl, &ev.Description); err != nil {
 				log.Printf("Row scan error: %v", err)
 				continue
 			}
@@ -97,11 +100,11 @@ func main() {
 	router.GET("/events/:id", func(c *gin.Context) {
 		idParam := c.Param("id")
 
-		query := "SELECT id, name, TO_CHAR(date, 'YYYY-MM-DD'), location, total_spaces, COALESCE(image_url, ''), COALESCE(description, '') FROM events WHERE id = $1"
+		query := "SELECT id, name, TO_CHAR(date, 'YYYY-MM-DD'), location, total_spaces, COALESCE(image_url, ''), COALESCE(map_url, ''), COALESCE(description, '') FROM events WHERE id = $1"
 		row := db.QueryRow(query, idParam)
 
 		var ev Event
-		err := row.Scan(&ev.ID, &ev.Name, &ev.Date, &ev.Location, &ev.TotalSpaces, &ev.ImageUrl, &ev.Description)
+		err := row.Scan(&ev.ID, &ev.Name, &ev.Date, &ev.Location, &ev.TotalSpaces, &ev.ImageUrl, &ev.MapUrl, &ev.Description)
 		if err != nil {
 			if err == sql.ErrNoRows {
 				c.JSON(http.StatusNotFound, gin.H{"error": "Event not found"})
@@ -155,6 +158,98 @@ func main() {
 	})
 
 	port := os.Getenv("PORT")
+// 4. ENDPOINT: Create a new event with zones and auto-generate tickets
+router.POST("/events", func(c *gin.Context) {
+type CreateZoneRequest struct {
+Name        string `json:"name"`
+Capacity    int    `json:"capacity"`
+Price       int    `json:"price"`
+Description string `json:"description"`
+}
+type CreateEventRequest struct {
+Name        string              `json:"name"`
+Date        string              `json:"date"`
+Location    string              `json:"location"`
+ImageUrl    string              `json:"image_url"`
+Description string              `json:"description"`
+Zones       []CreateZoneRequest `json:"zones"`
+}
+
+var req CreateEventRequest
+if err := c.ShouldBindJSON(&req); err != nil {
+c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request payload"})
+return
+}
+
+// Calculate total capacity from zones
+totalSpaces := 0
+for _, z := range req.Zones {
+totalSpaces += z.Capacity
+}
+
+tx, err := db.Begin()
+if err != nil {
+c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to start transaction"})
+return
+}
+
+// 1. Insert Event
+var newEventID int
+err = tx.QueryRow(`
+INSERT INTO events (name, date, location, total_spaces, image_url, description) 
+VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
+req.Name, req.Date, req.Location, totalSpaces, req.ImageUrl, req.Description,
+).Scan(&newEventID)
+
+if err != nil {
+tx.Rollback()
+log.Printf("Insert event error: %v", err)
+c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create event"})
+return
+}
+
+// 2. Insert Zones & 3. Auto-generate tickets
+for _, z := range req.Zones {
+var newZoneID int
+err = tx.QueryRow(`
+INSERT INTO event_zones (event_id, name, capacity, price, description) 
+VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+newEventID, z.Name, z.Capacity, z.Price, z.Description,
+).Scan(&newZoneID)
+
+if err != nil {
+tx.Rollback()
+log.Printf("Insert zone error: %v", err)
+c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create event zones"})
+return
+}
+
+// Auto-generate tickets for the zone
+_, err = tx.Exec(`
+INSERT INTO tickets (event_id, zone_id, seat_name, is_reserved)
+SELECT $1, $2, $3 || '_' || i, false 
+FROM generate_series(1, $4) AS i`,
+newEventID, newZoneID, z.Name, z.Capacity,
+)
+
+if err != nil {
+tx.Rollback()
+log.Printf("Generate tickets error: %v", err)
+c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate tickets"})
+return
+}
+}
+
+if err := tx.Commit(); err != nil {
+c.JSON(http.StatusInternalServerError, gin.H{"error": "Transaction commit failed"})
+return
+}
+
+c.JSON(http.StatusCreated, gin.H{
+"message":  "Event and tickets generated successfully",
+"event_id": newEventID,
+})
+})
 	if port == "" {
 		port = "8080"
 	}
