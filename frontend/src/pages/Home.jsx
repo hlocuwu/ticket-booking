@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { eventApi } from '../services/apiClient';
 import { Link, useSearchParams } from 'react-router-dom';
-import { Calendar, MapPin, ChevronLeft, ChevronRight, SearchX } from 'lucide-react';
+import { Calendar, MapPin, ChevronLeft, ChevronRight, SearchX, Tag } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Footer from '../components/layout/Footer';
 
@@ -16,6 +16,7 @@ export default function Home() {
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [currentBanner, setCurrentBanner] = useState(0);
+  const [activeCategory, setActiveCategory] = useState('Tất cả');
   const [searchParams] = useSearchParams();
   const searchQuery = searchParams.get('search');
 
@@ -47,6 +48,19 @@ export default function Home() {
     
     fetchEvents();
   }, [searchQuery]);
+
+  const CATEGORIES = [
+    { label: 'Tất cả', icon: '🎦' },
+    { label: 'Thể thao', icon: '⚽' },
+    { label: 'eSports', icon: '🎮' },
+    { label: 'Nghệ thuật', icon: '🎭' },
+    { label: 'Khác', icon: '✨' },
+  ];
+
+  // Client-side category filter (applied on top of search results)
+  const filteredEvents = activeCategory === 'Tất cả'
+    ? events
+    : events.filter(e => e.category === activeCategory);
 
   // Banner chỉ dùng upcoming events; fallback to MOCK_BANNERS nếu không có
   const upcomingEvents = events.filter(e => new Date(e.date) >= new Date(new Date().toDateString()));
@@ -115,12 +129,39 @@ export default function Home() {
       {/* ================= MAIN EVENT ROW ================= */}
       <div className="max-w-[1200px] mx-auto px-4 py-16">
         
-        {/* Section Header */}
-        <div className="flex items-center mb-8">
-          <h2 className="text-[26px] font-extrabold text-white tracking-tight flex items-center gap-3">
-            <div className="w-2 h-8 bg-[#00b14f] rounded-lg"></div> {/* Green accent line */}
-            {searchQuery ? `KẾT QUẢ TÌM KIẾM: "${searchQuery}"` : 'SỰ KIỆN NỔI BẬT'}
-          </h2>
+        {/* Section Header + Category Chips */}
+        <div className="mb-8">
+          <div className="flex items-center mb-5">
+            <h2 className="text-[26px] font-extrabold text-white tracking-tight flex items-center gap-3">
+              <div className="w-2 h-8 bg-[#00b14f] rounded-lg"></div>
+              {searchQuery ? `Kết quả: "${searchQuery}"` : 'SỰ KIỆN NỔI BẬT'}
+            </h2>
+          </div>
+
+          {/* Category chips */}
+          {!searchQuery && (
+            <div className="flex flex-wrap gap-2">
+              {CATEGORIES.map(({ label, icon }) => (
+                <button
+                  key={label}
+                  onClick={() => setActiveCategory(label)}
+                  className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-semibold border transition-all duration-200 ${
+                    activeCategory === label
+                      ? 'bg-[#00b14f] border-[#00b14f] text-white shadow-lg shadow-[#00b14f]/20 scale-105'
+                      : 'bg-[#31333e] border-[#454756] text-gray-300 hover:border-[#00b14f]/50 hover:text-white'
+                  }`}
+                >
+                  <span>{icon}</span>
+                  <span>{label}</span>
+                  {activeCategory === label && label !== 'Tất cả' && (
+                    <span className="ml-1 bg-white/20 text-white text-xs px-1.5 py-0.5 rounded-full">
+                      {filteredEvents.length}
+                    </span>
+                  )}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
         
         {loading ? (
@@ -128,7 +169,7 @@ export default function Home() {
             <div className="w-12 h-12 border-4 border-[#31333e] border-t-[#00b14f] rounded-full animate-spin mb-4"></div>
             <p className="font-medium text-lg">Đang tải sự kiện thú vị...</p>
           </div>
-        ) : events.length === 0 ? (
+        ) : filteredEvents.length === 0 ? (
           <div className="flex flex-col justify-center items-center py-32 text-gray-400">
             <SearchX size={64} className="text-[#454756] mb-4" />
             <p className="font-medium text-lg">Không tìm thấy sự kiện nào phù hợp!</p>
@@ -140,7 +181,7 @@ export default function Home() {
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 lg:gap-8">
-            {events.map((event) => {
+            {filteredEvents.map((event) => {
               const isPast = new Date(event.date) < new Date(new Date().toDateString());
 
               return (
@@ -185,6 +226,23 @@ export default function Home() {
                         <MapPin size={18} className="text-[#8c8f9b] mt-0.5 shrink-0" />
                         <span className="line-clamp-1">{event.location}</span>
                       </div>
+                    </div>
+
+                    {/* Price footer */}
+                    <div className="mt-4 pt-3.5 border-t border-[#454756] flex items-center justify-between">
+                      <div className="flex items-center gap-1.5">
+                        <Tag size={14} className={isPast ? 'text-gray-600' : 'text-[#00b14f]'} />
+                        {event.min_price > 0 ? (
+                          <span className={`text-sm font-bold ${isPast ? 'text-gray-600' : 'text-[#00b14f]'}`}>
+                            Từ {event.min_price.toLocaleString('vi-VN')} đ
+                          </span>
+                        ) : (
+                          <span className={`text-sm font-bold ${isPast ? 'text-gray-600' : 'text-[#2ecc71]'}`}>Miễn phí</span>
+                        )}
+                      </div>
+                      {!isPast && (
+                        <span className="text-[11px] text-gray-500 group-hover:text-[#00b14f] transition-colors font-medium">Xem chi tiết →</span>
+                      )}
                     </div>
                   </div>
                 </Link>

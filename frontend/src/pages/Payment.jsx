@@ -4,6 +4,7 @@ import { inventoryApi, bookingApi, notificationApi } from '../services/apiClient
 import { AuthContext } from '../context/AuthContext';
 import { CheckCircle, CreditCard, ChevronLeft, Loader2, Calendar, MapPin, Ticket, Clock } from 'lucide-react';
 import toast from 'react-hot-toast';
+import confetti from 'canvas-confetti';
 
 export default function Payment() {
   const { state } = useLocation();
@@ -128,6 +129,39 @@ export default function Payment() {
       toast.error('Có lỗi xảy ra khi xử lý vé trong hệ thống.');
     }
   };
+
+  // ===== CONFETTI on success =====
+  useEffect(() => {
+    if (!success) return;
+
+    const fire = (particleRatio, opts) => {
+      confetti({
+        origin: { y: 0.6 },
+        ...opts,
+        particleCount: Math.floor(200 * particleRatio),
+      });
+    };
+
+    // Burst 1 — center fan
+    fire(0.25, { spread: 26, startVelocity: 55 });
+    fire(0.20, { spread: 60 });
+    fire(0.35, { spread: 100, decay: 0.91, scalar: 0.8 });
+    fire(0.10, { spread: 120, startVelocity: 25, decay: 0.92, scalar: 1.2 });
+    fire(0.10, { spread: 120, startVelocity: 45 });
+
+    // Burst 2 — from left & right corners after 600ms
+    const t2 = setTimeout(() => {
+      confetti({ particleCount: 80, angle: 60, spread: 55, origin: { x: 0, y: 0.65 }, colors: ['#2ecc71', '#27ae60', '#ffffff'] });
+      confetti({ particleCount: 80, angle: 120, spread: 55, origin: { x: 1, y: 0.65 }, colors: ['#2ecc71', '#27ae60', '#ffffff'] });
+    }, 600);
+
+    // Burst 3 — finale shower after 1.4s
+    const t3 = setTimeout(() => {
+      confetti({ particleCount: 150, spread: 160, origin: { y: 0.5 }, colors: ['#2ecc71', '#f39c12', '#ffffff', '#3498db'] });
+    }, 1400);
+
+    return () => { clearTimeout(t2); clearTimeout(t3); };
+  }, [success]);
 
   // ===== SUCCESS SCREEN =====
   if (success) {

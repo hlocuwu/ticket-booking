@@ -22,6 +22,8 @@ type Event struct {
 	ImageUrl    string `json:"image_url"`
 	MapUrl      string `json:"map_url"`
 	Description string `json:"description"`
+	Category    string `json:"category"`
+	MinPrice    int    `json:"min_price"`
 }
 
 func main() {
@@ -58,17 +60,21 @@ func main() {
 	// 1. ENDPOINT: Get all events (for the frontend homepage) with optional search filter
 	router.GET("/events", func(c *gin.Context) {
 		searchQuery := c.Query("search")
-		var query string
+		categoryQuery := c.Query("category")
 		var rows *sql.Rows
 		var dbErr error
 
-		if searchQuery != "" {
-			query = "SELECT id, name, COALESCE(time, ''), TO_CHAR(date, 'YYYY-MM-DD'), location, COALESCE(address, ''), total_spaces, COALESCE(image_url, ''), COALESCE(map_url, ''), COALESCE(description, '') FROM events WHERE name ILIKE $1 OR location ILIKE $1 ORDER BY id ASC"
-			wildcardSearch := "%" + searchQuery + "%"
-			rows, dbErr = db.Query(query, wildcardSearch)
+		baseSelect := `SELECT e.id, e.name, COALESCE(e.time, ''), TO_CHAR(e.date, 'YYYY-MM-DD'), e.location, COALESCE(e.address, ''), e.total_spaces, COALESCE(e.image_url, ''), COALESCE(e.map_url, ''), COALESCE(e.description, ''), COALESCE(e.category, 'Khác'), COALESCE(MIN(ez.price), 0)
+			FROM events e LEFT JOIN event_zones ez ON ez.event_id = e.id`
+
+		if searchQuery != "" && categoryQuery != "" {
+			rows, dbErr = db.Query(baseSelect+" WHERE (e.name ILIKE $1 OR e.location ILIKE $1) AND e.category = $2 GROUP BY e.id ORDER BY e.id ASC", "%"+searchQuery+"%", categoryQuery)
+		} else if searchQuery != "" {
+			rows, dbErr = db.Query(baseSelect+" WHERE e.name ILIKE $1 OR e.location ILIKE $1 GROUP BY e.id ORDER BY e.id ASC", "%"+searchQuery+"%")
+		} else if categoryQuery != "" {
+			rows, dbErr = db.Query(baseSelect+" WHERE e.category = $1 GROUP BY e.id ORDER BY e.id ASC", categoryQuery)
 		} else {
-			query = "SELECT id, name, COALESCE(time, ''), TO_CHAR(date, 'YYYY-MM-DD'), location, COALESCE(address, ''), total_spaces, COALESCE(image_url, ''), COALESCE(map_url, ''), COALESCE(description, '') FROM events ORDER BY id ASC"
-			rows, dbErr = db.Query(query)
+			rows, dbErr = db.Query(baseSelect + " GROUP BY e.id ORDER BY e.id ASC")
 		}
 
 		if dbErr != nil {
@@ -81,7 +87,7 @@ func main() {
 		var events []Event
 		for rows.Next() {
 			var ev Event
-			if err := rows.Scan(&ev.ID, &ev.Name, &ev.Time, &ev.Date, &ev.Location, &ev.Address, &ev.TotalSpaces, &ev.ImageUrl, &ev.MapUrl, &ev.Description); err != nil {
+			if err := rows.Scan(&ev.ID, &ev.Name, &ev.Time, &ev.Date, &ev.Location, &ev.Address, &ev.TotalSpaces, &ev.ImageUrl, &ev.MapUrl, &ev.Description, &ev.Category, &ev.MinPrice); err != nil {
 				log.Printf("Row scan error: %v", err)
 				continue
 			}
@@ -89,7 +95,7 @@ func main() {
 		}
 
 		if len(events) == 0 {
-			events = []Event{} // Return empty array instead of null
+			events = []Event{}
 		}
 
 		c.JSON(http.StatusOK, events)
@@ -99,11 +105,11 @@ func main() {
 	router.GET("/events/:id", func(c *gin.Context) {
 		idParam := c.Param("id")
 
-		query := "SELECT id, name, COALESCE(time, ''), TO_CHAR(date, 'YYYY-MM-DD'), location, COALESCE(address, ''), total_spaces, COALESCE(image_url, ''), COALESCE(map_url, ''), COALESCE(description, '') FROM events WHERE id = $1"
+		query := "SELECT id, name, COALESCE(time, ''), TO_CHAR(date, 'YYYY-MM-DD'), location, COALESCE(address, ''), total_spaces, COALESCE(image_url, ''), COALESCE(map_url, ''), COALESCE(description, ''), COALESCE(category, 'Khác') FROM events WHERE id = $1"
 		row := db.QueryRow(query, idParam)
 
 		var ev Event
-		err := row.Scan(&ev.ID, &ev.Name, &ev.Time, &ev.Date, &ev.Location, &ev.Address, &ev.TotalSpaces, &ev.ImageUrl, &ev.MapUrl, &ev.Description)
+		err := row.Scan(&ev.ID, &ev.Name, &ev.Time, &ev.Date, &ev.Location, &ev.Address, &ev.TotalSpaces, &ev.ImageUrl, &ev.MapUrl, &ev.Description, &ev.Category)
 		if err != nil {
 			if err == sql.ErrNoRows {
 				c.JSON(http.StatusNotFound, gin.H{"error": "Event not found"})

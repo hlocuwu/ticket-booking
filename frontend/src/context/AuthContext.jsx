@@ -57,14 +57,27 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // 3. Logic hàm register
-  const register = async (userData) => {
+  // 3. Logic hàm register (Bước 1: Gửi OTP)
+  const registerSendOtp = async (userData) => {
     try {
-      await authService.register(userData);
+      await authService.registerSendOtp(userData);
+      toast.success('Mã OTP đã được gửi đến email của bạn!');
+      return true;
+    } catch (err) {
+      const errorMsg = err.response?.data?.message || err.response?.data?.error || 'Không thể gửi mã OTP';
+      toast.error(errorMsg);
+      throw err;
+    }
+  };
+
+  // 4. Logic xác thực OTP (Bước 2: Hoàn tất đăng ký)
+  const registerVerifyOtp = async (data) => {
+    try {
+      await authService.registerVerify(data);
       toast.success('Đăng ký thành công! Vui lòng đăng nhập.');
       return true;
     } catch (err) {
-      const errorMsg = err.response?.data?.message || err.response?.data?.error || 'Đăng ký thất bại';
+      const errorMsg = err.response?.data?.message || err.response?.data?.error || 'Xác thực OTP thất bại';
       toast.error(errorMsg);
       throw err;
     }
@@ -78,7 +91,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, setUser, login, register, logout, loading }}>
+    <AuthContext.Provider value={{ user, setUser, login, registerSendOtp, registerVerifyOtp, logout, loading }}>
       {!loading && children}
     </AuthContext.Provider>
   );

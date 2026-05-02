@@ -37,9 +37,15 @@ apiClient.interceptors.response.use(
 );
 
 export const authService = {
-  // POST /api/auth/register nhận username, email, password
-  register: async (userData) => {
-    const response = await apiClient.post('/auth/register', userData);
+  // POST /api/auth/register/send-otp nhận username, email, password
+  registerSendOtp: async (userData) => {
+    const response = await apiClient.post('/auth/register/send-otp', userData);
+    return response.data;
+  },
+
+  // POST /api/auth/register/verify nhận email, otp
+  registerVerify: async (data) => {
+    const response = await apiClient.post('/auth/register/verify', data);
     return response.data;
   },
 
