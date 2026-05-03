@@ -6,6 +6,8 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -238,15 +240,87 @@ func main() {
 
 		fmt.Printf("Order %s confirmed. Sending email to %s...\n", req.OrderID, req.UserEmail)
 
+		// Format ticket IDs: [101, 102, 103] → "#101, #102, #103"
+		ticketLabels := make([]string, len(req.TicketIDs))
+		for i, id := range req.TicketIDs {
+			ticketLabels[i] = "#" + strconv.Itoa(id)
+		}
+		ticketIDStr := strings.Join(ticketLabels, ", ")
+
+		// Format amount with thousand separators: 1200000 → "1.200.000"
+		amountStr := func(n int) string {
+			s := strconv.Itoa(n)
+			result := ""
+			for i, ch := range s {
+				if i > 0 && (len(s)-i)%3 == 0 {
+					result += "."
+				}
+				result += string(ch)
+			}
+			return result
+		}(req.Amount)
+
+		purchaseTime := time.Now().Format("15:04 - 02/01/2006")
+
 		emailBody := fmt.Sprintf(`
-			<div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">
-			  <h2 style="color: #2ecc71;">Thanh toán thành công!</h2>
-			  <p>Chào <strong>%s</strong>,</p>
-			  <p>Bạn đã mua thành công <strong>%d vé</strong> cho sự kiện <strong>%s</strong>.</p>
-			  <p>Tổng tiền: %d đ</p>
-			  <p>Vui lòng đăng nhập vào ứng dụng để xem chi tiết vé.</p>
-			</div>
-		`, req.UserID, len(req.TicketIDs), req.EventName, req.Amount)
+<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;border:1px solid #e0e0e0;border-radius:10px;overflow:hidden;">
+
+  <div style="background-color:#2ecc71;padding:28px;text-align:center;">
+    <div style="font-size:48px;">🎉</div>
+    <h2 style="margin:10px 0 4px;color:#ffffff;font-size:22px;">Đặt vé thành công!</h2>
+    <p style="margin:0;color:rgba(255,255,255,0.85);font-size:14px;">Cảm ơn bạn đã sử dụng FlashTicket</p>
+  </div>
+
+  <div style="padding:28px;background:#ffffff;color:#333333;">
+    <p style="margin:0 0 16px;">Chào <strong>%s</strong>,</p>
+    <p style="margin:0 0 20px;color:#555;">Chúng tôi xác nhận bạn đã đặt vé thành công. Dưới đây là thông tin chi tiết đơn hàng:</p>
+
+    <div style="background:#f8fffe;border:1px solid #c8f0dc;border-radius:10px;padding:20px;margin-bottom:24px;">
+      <table style="width:100%%;border-collapse:collapse;">
+        <tr>
+          <td style="padding:10px 0;color:#777;font-size:14px;border-bottom:1px solid #e4f5ec;">Mã đơn hàng</td>
+          <td style="padding:10px 0;text-align:right;font-weight:bold;font-size:13px;border-bottom:1px solid #e4f5ec;">%s</td>
+        </tr>
+        <tr>
+          <td style="padding:10px 0;color:#777;font-size:14px;border-bottom:1px solid #e4f5ec;">Sự kiện</td>
+          <td style="padding:10px 0;text-align:right;font-weight:bold;color:#27ae60;border-bottom:1px solid #e4f5ec;">%s</td>
+        </tr>
+        <tr>
+          <td style="padding:10px 0;color:#777;font-size:14px;border-bottom:1px solid #e4f5ec;">Số lượng vé</td>
+          <td style="padding:10px 0;text-align:right;font-weight:bold;border-bottom:1px solid #e4f5ec;">%d vé</td>
+        </tr>
+        <tr>
+          <td style="padding:10px 0;color:#777;font-size:14px;border-bottom:1px solid #e4f5ec;">Mã vé</td>
+          <td style="padding:10px 0;text-align:right;font-size:13px;color:#555;border-bottom:1px solid #e4f5ec;">%s</td>
+        </tr>
+        <tr>
+          <td style="padding:10px 0;color:#777;font-size:14px;border-bottom:1px solid #e4f5ec;">Thời gian mua</td>
+          <td style="padding:10px 0;text-align:right;font-size:13px;border-bottom:1px solid #e4f5ec;">%s</td>
+        </tr>
+        <tr>
+          <td style="padding:14px 0 0;font-size:16px;font-weight:bold;">Tổng tiền</td>
+          <td style="padding:14px 0 0;text-align:right;font-size:22px;font-weight:bold;color:#2ecc71;">%s đ</td>
+        </tr>
+      </table>
+    </div>
+
+    <div style="text-align:center;margin:24px 0;">
+      <a href="http://localhost:3000/my-tickets"
+         style="background-color:#2ecc71;color:#ffffff;padding:13px 36px;text-decoration:none;border-radius:8px;font-weight:bold;font-size:15px;display:inline-block;">
+        Xem vé của tôi
+      </a>
+    </div>
+
+    <p style="color:#999;font-size:13px;margin:0 0 4px;">Nếu bạn có bất kỳ câu hỏi nào, vui lòng liên hệ đội ngũ hỗ trợ.</p>
+    <p style="margin:0;">Trân trọng,<br><strong>Đội ngũ FlashTicket</strong></p>
+  </div>
+
+  <div style="background:#f5f5f5;padding:14px;text-align:center;font-size:12px;color:#aaa;">
+    &copy; 2026 FlashTicket. Tất cả các quyền được bảo lưu.
+  </div>
+
+</div>
+`, req.UserID, req.OrderID, req.EventName, len(req.TicketIDs), ticketIDStr, purchaseTime, amountStr)
 
 		_, err := client.R().
 			SetBody(map[string]interface{}{
