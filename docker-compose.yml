@@ -55,6 +55,7 @@ services:
     build:
       context: ./services/inventory
       dockerfile: Dockerfile
+    image: ghcr.io/${GITHUB_USERNAME}/ticket-booking-inventory:latest
     container_name: ticket_inventory_service
     restart: on-failure
     ports:
@@ -72,6 +73,7 @@ services:
     build:
       context: ./services/waitingroom
       dockerfile: Dockerfile
+    image: ghcr.io/${GITHUB_USERNAME}/ticket-booking-waitingroom:latest
     container_name: ticket_waitingroom_service
     restart: on-failure
     ports:
@@ -90,6 +92,7 @@ services:
     build:
       context: ./services/booking
       dockerfile: Dockerfile
+    image: ghcr.io/${GITHUB_USERNAME}/ticket-booking-booking:latest
     container_name: ticket_booking_service
     restart: on-failure
     ports:
@@ -115,6 +118,7 @@ services:
     build:
       context: ./services/event
       dockerfile: Dockerfile
+    image: ghcr.io/${GITHUB_USERNAME}/ticket-booking-event:latest
     container_name: ticket_event_service
     restart: on-failure
     ports:
@@ -132,6 +136,7 @@ services:
     build:
       context: ./services/notification
       dockerfile: Dockerfile
+    image: ghcr.io/${GITHUB_USERNAME}/ticket-booking-notification:latest
     container_name: ticket_notification_service
     restart: on-failure
     ports:
@@ -150,6 +155,7 @@ services:
     build:
       context: ./services/auth
       dockerfile: Dockerfile
+    image: ghcr.io/${GITHUB_USERNAME}/ticket-booking-auth:latest
     container_name: ticket_auth_service
     restart: on-failure
     ports:
@@ -170,6 +176,7 @@ services:
     build:
       context: ./services/payment
       dockerfile: Dockerfile
+    image: ghcr.io/${GITHUB_USERNAME}/ticket-booking-payment:latest
     container_name: ticket_payment_service
     restart: on-failure
     ports:
@@ -184,6 +191,7 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+    image: ghcr.io/${GITHUB_USERNAME}/ticket-booking-frontend:latest
     container_name: ticket_frontend
     restart: always
     ports:

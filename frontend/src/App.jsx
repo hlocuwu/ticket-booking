@@ -8,6 +8,7 @@ import Payment from './pages/Payment';
 import PaymentCallback from './pages/PaymentCallback';
 import Profile from './pages/Profile';
 import MyTickets from './pages/MyTickets';
+import Admin from './pages/Admin';
 import ProtectedRoute from './components/common/ProtectedRoute';
 import { Toaster } from 'react-hot-toast';
 
@@ -53,13 +54,22 @@ function App() {
           />
           
           {/* Protected Routes (Chỉ cho phép truy cập khi đã Login) */}
-          <Route 
-            path="/profile" 
+          <Route
+            path="/profile"
             element={
               <ProtectedRoute>
                 <div className="max-w-7xl mx-auto px-4 py-8"><Profile /></div>
               </ProtectedRoute>
-            } 
+            }
+          />
+
+          <Route
+            path="/admin"
+            element={
+              <ProtectedRoute>
+                <Admin />
+              </ProtectedRoute>
+            }
           />
         </Routes>
       </main>

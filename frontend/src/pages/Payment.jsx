@@ -1,6 +1,6 @@
 import { useState, useContext, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { inventoryApi, bookingApi, notificationApi } from '../services/apiClient';
+import { inventoryApi, bookingApi, queueApi } from '../services/apiClient';
 import { AuthContext } from '../context/AuthContext';
 import { CheckCircle, CreditCard, ChevronLeft, Loader2, Calendar, MapPin, Ticket, Clock } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -39,6 +39,8 @@ export default function Payment() {
     if (success) return;
     if (timeLeft <= 0) {
       if (SESSION_KEY) sessionStorage.removeItem(SESSION_KEY);
+      // Rời hàng đợi để người tiếp theo không bị treo
+      queueApi.post('/queue/leave', { user_id: user?.username }).catch(() => {});
       toast.error('Đã hết thời gian thao tác! Vui lòng đăng ký lại.');
       navigate(-1);
       return;
@@ -88,13 +90,6 @@ export default function Payment() {
 
       const ticketIds = ticketsToBook.map(t => t.id);
 
-      sessionStorage.setItem('pendingPayment', JSON.stringify({
-        eventName: event.name,
-        eventId: event.id,
-        amount: total,
-        ticketIds: ticketIds
-      }));
-
       const response = await bookingApi.post('/book', {
         user_id: user.username,
         ticket_ids: ticketIds,
@@ -104,6 +99,15 @@ export default function Payment() {
       });
 
       if (response.data && response.data.payUrl) {
+        // Lưu đầy đủ thông tin để có thể rollback nếu user bỏ giữa chừng
+        sessionStorage.setItem('pendingPayment', JSON.stringify({
+          eventName: event.name,
+          eventId: event.id,
+          amount: total,
+          ticketIds: ticketIds,
+          orderId: response.data.order_id,
+          userId: user.username,
+        }));
         window.location.href = response.data.payUrl;
       } else {
         toast.error("Không nhận được link thanh toán từ hệ thống.");
@@ -218,7 +222,7 @@ export default function Payment() {
                 {loading && loadingMethod === 'momo' ? (
                   <><Loader2 className="animate-spin w-5 h-5" /> Đang xử lý...</>
                 ) : (
-                  <>💜 Thanh toán qua MoMo</>
+                  <><img src="https://img.mservice.com.vn/app/img/portal_documents/mini-app_design-guideline_branding-guide-2-2.png" alt="MoMo" className="w-6 h-6 rounded-full object-cover" /> Thanh toán qua MoMo</>
                 )}
               </button>
 
@@ -231,7 +235,7 @@ export default function Payment() {
                 {loading && loadingMethod === 'mock' ? (
                   <><Loader2 className="animate-spin w-5 h-5" /> Đang xử lý...</>
                 ) : (
-                  <>🧪 Thanh toán thử (Demo)</>
+                  <>Thanh toán thử (Demo)</>
                 )}
               </button>
             </div>

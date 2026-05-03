@@ -126,7 +126,7 @@ func main() {
 		var queueStatus struct {
 			Position int64 `json:"position"`
 		}
-		if jsonErr := json.Unmarshal(queueResp.Body(), &queueStatus); jsonErr != nil || queueStatus.Position > 5 {
+		if jsonErr := json.Unmarshal(queueResp.Body(), &queueStatus); jsonErr != nil || queueStatus.Position > 1 {
 			c.JSON(http.StatusForbidden, gin.H{"error": "It's not your turn yet. Please wait in the queue."})
 			return
 		}
@@ -184,7 +184,7 @@ func main() {
 				}
 			}
 		}(orderID, req.TicketIDs, req.UserID)
-		fmt.Printf("Tickets reserved. Generating MoMo payment for order %s...\n", orderID)
+		fmt.Printf("Tickets reserved. Generating payment for order %s...\n", orderID)
 
 		paymentResp, err := client.R().
 			SetBody(map[string]interface{}{
@@ -216,10 +216,49 @@ func main() {
 			return
 		}
 
-		c.Data(paymentResp.StatusCode(), "application/json", paymentResp.Body())
+		// Inject order_id into the payment response so the frontend can store it for rollback
+		var payData map[string]interface{}
+		if jsonErr := json.Unmarshal(paymentResp.Body(), &payData); jsonErr != nil {
+			payData = make(map[string]interface{})
+		}
+		payData["order_id"] = orderID
+		c.JSON(http.StatusOK, payData)
 	})
 
-	// 3. Confirm endpoint (Called after MoMo redirects back to Frontend)
+	// 3. Rollback endpoint (Called when user abandons or payment fails)
+	router.POST("/rollback", func(c *gin.Context) {
+		var req struct {
+			OrderID   string `json:"order_id" binding:"required"`
+			UserID    string `json:"user_id" binding:"required"`
+			TicketIDs []int  `json:"ticket_ids" binding:"required"`
+		}
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request payload"})
+			return
+		}
+
+		// Prevent the auto-rollback goroutine from also firing
+		orderMu.Lock()
+		confirmedOrders[req.OrderID] = true
+		orderMu.Unlock()
+
+		log.Printf("Manual rollback requested for order %s, tickets %v", req.OrderID, req.TicketIDs)
+		_, err := client.R().
+			SetBody(map[string]interface{}{
+				"ticket_ids": req.TicketIDs,
+				"owner_id":   req.UserID,
+			}).
+			Post(inventoryURL + "/tickets/rollback-batch")
+		if err != nil {
+			log.Printf("Rollback failed for order %s: %v", req.OrderID, err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Rollback failed"})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{"message": "Tickets rolled back successfully"})
+	})
+
+	// 4. Confirm endpoint (Called after MoMo redirects back to Frontend)
 	router.POST("/confirm", func(c *gin.Context) {
 		var req ConfirmPaymentRequest
 		if err := c.ShouldBindJSON(&req); err != nil {

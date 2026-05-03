@@ -84,9 +84,10 @@ export default function EventDetails() {
         setTimeLeft(prev => prev - 1);
       }, 1000);
     } else if (timeLeft === 0 && queueStatus === 'TURN_ARRIVED') {
-      // Session expired
+      // Session expired — phải rời hàng đợi để người tiếp theo vào được
       sessionStorage.removeItem(SESSION_KEY);
-      toast.error('Đã hết thời gian thao tác!');
+      queueApi.post('/queue/leave', { user_id: user?.username }).catch(() => {});
+      toast.error('Đã hết thời gian thao tác! Lượt của bạn đã bị hủy.');
       setQueueStatus('NOT_JOINED');
       setTimeLeft(TOTAL_SECONDS);
       setSelectedTickets({});
@@ -170,6 +171,25 @@ export default function EventDetails() {
       return;
     }
 
+    // Nếu còn pendingPayment từ lần mua bỏ dở → rollback vé ngay lập tức
+    const pendingStr = sessionStorage.getItem('pendingPayment');
+    if (pendingStr) {
+      try {
+        const pending = JSON.parse(pendingStr);
+        if (pending.orderId && pending.ticketIds?.length > 0) {
+          await bookingApi.post('/rollback', {
+            order_id: pending.orderId,
+            user_id: pending.userId || user.username,
+            ticket_ids: pending.ticketIds,
+          });
+          toast.success('Đã hoàn lại vé từ lần đặt chưa thanh toán.');
+        }
+      } catch (e) {
+        console.error('Rollback error:', e);
+      }
+      sessionStorage.removeItem('pendingPayment');
+    }
+
     // Xoá session cũ để timer và vé đã chọn reset hoàn toàn
     sessionStorage.removeItem(SESSION_KEY);
     setSelectedTickets({});
@@ -191,7 +211,7 @@ export default function EventDetails() {
         const res = await queueApi.get('/queue/status', { params: { user_id: user.username } });
         setQueuePosition(res.data.position);
         
-        if (res.data.position <= 5) {
+        if (res.data.position <= 1) {
           // Save session to sessionStorage so timer survives navigation
           const startTimestamp = Date.now();
           sessionStorage.setItem(SESSION_KEY, JSON.stringify({ eventId: id, startTimestamp, selectedTickets: {} }));
@@ -372,16 +392,18 @@ export default function EventDetails() {
               
               <div className="flex flex-col lg:flex-row gap-8">
                 {/* Sơ đồ sân khấu */}
-                <div className="lg:w-2/3 bg-[#2a2c36] p-4 rounded-xl border border-[#454756] flex flex-col items-center justify-center min-h-[400px] relative group cursor-pointer" onClick={() => setShowImageModal(true)}>
+                <div className="lg:w-2/3 bg-[#2a2c36] p-4 rounded-xl border border-[#454756] flex flex-col items-center justify-between relative group cursor-pointer self-stretch" onClick={() => setShowImageModal(true)}>
                    <div className="absolute top-4 right-4 bg-black/60 p-2 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity z-10 hidden md:block">
                      <ZoomIn className="text-white w-6 h-6" />
                    </div>
-                   <img 
-                     src={event.map_url || "https://images.unsplash.com/photo-1540575467063-178a50c2df87?auto=format&fit=crop&w=1200&q=80"}
-                     alt="Sơ đồ sân khấu" 
-                     className="w-full h-auto rounded-lg object-contain max-h-[600px] hover:scale-[1.02] transition-transform duration-300"
-                   />
-                   <p className="mt-4 text-sm text-gray-400 italic text-center">Bấm vào hình để phóng to</p>
+                   <div className="flex-1 min-h-0 w-full flex items-center justify-center overflow-hidden">
+                     <img
+                       src={event.map_url || "https://images.unsplash.com/photo-1540575467063-178a50c2df87?auto=format&fit=crop&w=1200&q=80"}
+                       alt="Sơ đồ sân khấu"
+                       className="w-full h-full object-contain rounded-lg hover:scale-[1.02] transition-transform duration-300"
+                     />
+                   </div>
+                   <p className="mt-3 text-sm text-gray-400 italic text-center shrink-0">Bấm vào hình để phóng to</p>
                 </div>
 
                 {/* Danh sách các loại vé */}

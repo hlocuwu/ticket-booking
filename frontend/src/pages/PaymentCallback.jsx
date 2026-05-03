@@ -38,8 +38,19 @@ export default function PaymentCallback() {
       }
 
       if (resultCode !== '0') {
+        // Rollback reserved tickets immediately
+        const rollbackOrderId = orderId || pending.orderId;
+        const rollbackUserId = pending.userId || user?.username;
+        if (rollbackOrderId && ticketIds.length > 0) {
+          bookingApi.post('/rollback', {
+            order_id: rollbackOrderId,
+            user_id: rollbackUserId,
+            ticket_ids: ticketIds,
+          }).catch(e => console.error('Rollback error:', e));
+        }
+        sessionStorage.removeItem('pendingPayment');
         setStatus('error');
-        toast.error("Thanh toán thất bại hoặc đã bị hủy.");
+        toast.error("Thanh toán thất bại hoặc đã bị hủy. Vé đã được hoàn lại.");
         return;
       }
 

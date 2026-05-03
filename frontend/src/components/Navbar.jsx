@@ -1,7 +1,7 @@
 import { useContext, useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
-import { Search, Ticket, User, LogOut, Clock, X } from 'lucide-react';
+import { Search, Ticket, User, LogOut, Clock, X, LayoutDashboard } from 'lucide-react';
 import toast from 'react-hot-toast';
 import logo from '../assets/images/bg.svg';
 
@@ -178,6 +178,12 @@ export default function Navbar() {
                   <Ticket size={20} strokeWidth={2.5} className="text-gray-600" />
                   <span>Vé của tôi</span>
                 </Link>
+                {user?.username === 'admin' && (
+                  <Link to="/admin" className="flex items-center gap-3 w-full px-3 py-2.5 hover:bg-gray-100 rounded-lg transition-colors text-[15px] font-medium text-gray-700">
+                    <LayoutDashboard size={20} strokeWidth={2.5} className="text-gray-600" />
+                    <span>Quản trị</span>
+                  </Link>
+                )}
                 <button onClick={logout} className="flex items-center gap-3 w-full px-3 py-2.5 hover:bg-gray-100 rounded-lg transition-colors text-[15px] font-medium text-red-500">
                   <LogOut size={20} strokeWidth={2.5} className="text-red-500 opacity-80" />
                   <span>Đăng xuất</span>
