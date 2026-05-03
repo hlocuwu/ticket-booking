@@ -46,6 +46,7 @@ CREATE TABLE IF NOT EXISTS tickets (
     zone_id INT,
     seat_name VARCHAR(50) NOT NULL,
     is_reserved BOOLEAN DEFAULT FALSE,
+    is_confirmed BOOLEAN NOT NULL DEFAULT FALSE,
     owner_id VARCHAR(50),
     CONSTRAINT fk_event_ticket FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE,
     CONSTRAINT fk_zone FOREIGN KEY (zone_id) REFERENCES event_zones(id) ON DELETE CASCADE

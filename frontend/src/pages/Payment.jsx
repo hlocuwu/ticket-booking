@@ -12,6 +12,7 @@ export default function Payment() {
   const { user } = useContext(AuthContext);
 
   const [loading, setLoading] = useState(false);
+  const [loadingMethod, setLoadingMethod] = useState(null); // 'momo' | 'mock'
   const [success, setSuccess] = useState(false);
 
   // --- Shared countdown timer from EventDetails session ---
@@ -51,20 +52,22 @@ export default function Payment() {
   const { selectedTickets, event, total, ticketTypes } = state;
   const totalCount = Object.values(selectedTickets).reduce((a, b) => a + b, 0);
 
-  const handleCheckout = async () => {
+  const handleCheckout = async (paymentMethod = 'momo') => {
     if (!user) {
       toast.error('Vui lòng đăng nhập lại!');
       return navigate('/login');
     }
 
     setLoading(true);
+    setLoadingMethod(paymentMethod);
 
     try {
-      const res = await inventoryApi.get('/tickets');
-      const availableTickets = res.data.filter(t => t.event_id === Number(event.id) && !t.is_reserved);
+      const res = await inventoryApi.get(`/tickets?event_id=${event.id}`);
+      const availableTickets = res.data.filter(t => !t.is_reserved);
 
       if (availableTickets.length < totalCount) {
         setLoading(false);
+        setLoadingMethod(null);
         toast.error(`Rất tiếc! Chỉ còn ${availableTickets.length} ghế trống trong hệ thống.`);
         return;
       }
@@ -76,146 +79,47 @@ export default function Payment() {
           if (zoneTickets.length < qty) {
             toast.error(`Rất tiếc! Không đủ vé trong khu vực bạn chọn.`);
             setLoading(false);
+            setLoadingMethod(null);
             return;
           }
           ticketsToBook.push(...zoneTickets.slice(0, qty));
         }
       }
 
-      for (const ticket of ticketsToBook) {
-        await bookingApi.post('/book', {
-          user_id: user.username,
-          ticket_id: ticket.id
-        });
-      }
+      const ticketIds = ticketsToBook.map(t => t.id);
 
-      if (user.email) {
-        try {
-          const emailBody = `
-            <div style="font-family: Arial, sans-serif; padding: 20px; max-width: 600px; margin: 0 auto; color: #333;">
-              <h2 style="color: #2ecc71;">Thanh toán thành công!</h2>
-              <p>${user.fullName ? `Ch\u00e0o <strong>${user.fullName}</strong>` : `Ch\u00e0o <strong>${user.username}</strong>`},</p>
-              <p>Bạn đã mua thành công <strong>${totalCount} vé</strong> cho sự kiện <strong>${event.name}</strong>.</p>
-              <p><strong>Thông tin sự kiện:</strong></p>
-              <ul style="line-height: 1.5;">
-                <li><strong>Thời gian:</strong> ${event.date}${event.time ? ' | ' + event.time : ''}</li>
-                <li><strong>Địa điểm:</strong> ${event.location}</li>
-                <li><strong>Tổng tiền:</strong> ${total.toLocaleString('vi-VN')} đ</li>
-              </ul>
-              <p>Vui lòng đăng nhập vào ứng dụng để xem chi tiết vé và nhận mã QR tại mục <em>Vé của tôi</em>.</p>
-              <p>Trân trọng,<br>Ticket Booking Team</p>
-            </div>
-          `;
-          await notificationApi.post('/send-email', {
-            to_email: user.email,
-            subject: `Xác nhận đặt vé thành công: ${event.name}`,
-            body: emailBody
-          });
-        } catch (emailErr) {
-          console.error('Failed to send email notification', emailErr);
-        }
-      }
+      sessionStorage.setItem('pendingPayment', JSON.stringify({
+        eventName: event.name,
+        eventId: event.id,
+        amount: total,
+        ticketIds: ticketIds
+      }));
 
-      setTimeout(() => {
-        if (SESSION_KEY) sessionStorage.removeItem(SESSION_KEY);
+      const response = await bookingApi.post('/book', {
+        user_id: user.username,
+        ticket_ids: ticketIds,
+        amount: total,
+        return_url: `${window.location.origin}/payment/callback`,
+        payment_method: paymentMethod,
+      });
+
+      if (response.data && response.data.payUrl) {
+        window.location.href = response.data.payUrl;
+      } else {
+        toast.error("Không nhận được link thanh toán từ hệ thống.");
         setLoading(false);
-        setSuccess(true);
-        toast.success('Thanh toán và giữ chỗ thành công!');
-      }, 2000);
+        setLoadingMethod(null);
+      }
 
     } catch (err) {
       console.error(err);
       setLoading(false);
-      toast.error('Có lỗi xảy ra khi xử lý vé trong hệ thống.');
+      setLoadingMethod(null);
+      toast.error(err.response?.data?.error || 'Có lỗi xảy ra khi xử lý hệ thống.');
     }
   };
 
-  // ===== CONFETTI on success =====
-  useEffect(() => {
-    if (!success) return;
-
-    const fire = (particleRatio, opts) => {
-      confetti({
-        origin: { y: 0.6 },
-        ...opts,
-        particleCount: Math.floor(200 * particleRatio),
-      });
-    };
-
-    // Burst 1 — center fan
-    fire(0.25, { spread: 26, startVelocity: 55 });
-    fire(0.20, { spread: 60 });
-    fire(0.35, { spread: 100, decay: 0.91, scalar: 0.8 });
-    fire(0.10, { spread: 120, startVelocity: 25, decay: 0.92, scalar: 1.2 });
-    fire(0.10, { spread: 120, startVelocity: 45 });
-
-    // Burst 2 — from left & right corners after 600ms
-    const t2 = setTimeout(() => {
-      confetti({ particleCount: 80, angle: 60, spread: 55, origin: { x: 0, y: 0.65 }, colors: ['#2ecc71', '#27ae60', '#ffffff'] });
-      confetti({ particleCount: 80, angle: 120, spread: 55, origin: { x: 1, y: 0.65 }, colors: ['#2ecc71', '#27ae60', '#ffffff'] });
-    }, 600);
-
-    // Burst 3 — finale shower after 1.4s
-    const t3 = setTimeout(() => {
-      confetti({ particleCount: 150, spread: 160, origin: { y: 0.5 }, colors: ['#2ecc71', '#f39c12', '#ffffff', '#3498db'] });
-    }, 1400);
-
-    return () => { clearTimeout(t2); clearTimeout(t3); };
-  }, [success]);
-
-  // ===== SUCCESS SCREEN =====
-  if (success) {
-    return (
-      <div className="min-h-[80vh] bg-[#1b1c21] flex flex-col items-center justify-center p-6 text-white">
-        <div className="bg-[#31333e] border border-[#454756] rounded-3xl p-10 max-w-md w-full text-center shadow-2xl">
-          {/* Icon with animated ring */}
-          <div className="relative w-24 h-24 mx-auto mb-6">
-            <div className="absolute inset-0 rounded-full bg-[#2ecc71]/10 animate-ping" />
-            <div className="relative w-24 h-24 rounded-full bg-[#2ecc71]/10 border border-[#2ecc71]/30 flex items-center justify-center">
-              <CheckCircle className="text-[#2ecc71] w-12 h-12" />
-            </div>
-          </div>
-
-          <h1 className="text-3xl font-bold text-white mb-2">Thanh toán thành công!</h1>
-          <p className="text-gray-400 text-base mb-2">
-            Cảm ơn bạn đã đặt <span className="text-white font-semibold">{totalCount} vé</span>
-          </p>
-          <p className="text-[#2ecc71] font-semibold text-lg mb-8 line-clamp-2">{event.name}</p>
-
-          {/* Event info summary */}
-          <div className="bg-[#2a2c36] rounded-xl p-4 mb-8 text-left space-y-2.5 border border-[#454756]">
-            <div className="flex items-center gap-2.5 text-sm text-gray-400">
-              <Calendar className="w-4 h-4 text-[#2ecc71] shrink-0" />
-              <span>{event.date}{event.time ? ` | ${event.time}` : ''}</span>
-            </div>
-            <div className="flex items-start gap-2.5 text-sm text-gray-400">
-              <MapPin className="w-4 h-4 text-[#2ecc71] shrink-0 mt-0.5" />
-              <span>{event.location}</span>
-            </div>
-            <div className="flex items-center gap-2.5 text-sm text-gray-400">
-              <Ticket className="w-4 h-4 text-[#2ecc71] shrink-0" />
-              <span>Tổng: <span className="text-white font-bold">{total.toLocaleString('vi-VN')} đ</span></span>
-            </div>
-          </div>
-
-          <div className="flex gap-3">
-            <button
-              onClick={() => navigate('/my-tickets')}
-              className="flex-1 bg-[#2ecc71] hover:bg-[#27ae60] text-white font-bold py-3 px-6 rounded-xl transition-all shadow-lg shadow-[#2ecc71]/10"
-            >
-              Xem vé của tôi
-            </button>
-            <button
-              onClick={() => navigate('/')}
-              className="flex-1 bg-[#2a2c36] hover:bg-[#454756] text-gray-300 font-bold py-3 px-6 rounded-xl border border-[#454756] transition-all"
-            >
-              Trang chủ
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  // (Success screen moved to PaymentCallback)
 
   // ===== PAYMENT FORM =====
   return (
@@ -272,7 +176,7 @@ export default function Payment() {
                 let name = `Khu vực #${typeId}`;
                 let price = 0;
                 if (ticketTypes) {
-                  const typeInfo = ticketTypes.find(t => t.id === typeId);
+                  const typeInfo = ticketTypes.find(t => String(t.id) === typeId);
                   if (typeInfo) { name = typeInfo.name; price = typeInfo.price; }
                 }
                 return (
@@ -304,17 +208,33 @@ export default function Payment() {
               cho hệ thống. Vé sẽ được gửi vào email sau khi hoàn tất.
             </p>
 
-            <button
-              onClick={handleCheckout}
-              disabled={loading}
-              className="w-full bg-[#2ecc71] hover:bg-[#27ae60] disabled:bg-[#454756] disabled:text-gray-500 text-white font-bold py-4 rounded-xl text-lg transition-all shadow-lg shadow-[#2ecc71]/10 flex items-center justify-center"
-            >
-              {loading ? (
-                <><Loader2 className="animate-spin w-5 h-5 mr-2" /> Đang xử lý...</>
-              ) : (
-                'Thanh toán ngay'
-              )}
-            </button>
+            <div className="w-full space-y-3">
+              {/* MoMo */}
+              <button
+                onClick={() => handleCheckout('momo')}
+                disabled={loading}
+                className="w-full bg-[#ae2070] hover:bg-[#8b1a5a] disabled:bg-[#454756] disabled:text-gray-500 text-white font-bold py-4 rounded-xl text-base transition-all flex items-center justify-center gap-2 shadow-lg shadow-[#ae2070]/20"
+              >
+                {loading && loadingMethod === 'momo' ? (
+                  <><Loader2 className="animate-spin w-5 h-5" /> Đang xử lý...</>
+                ) : (
+                  <>💜 Thanh toán qua MoMo</>
+                )}
+              </button>
+
+              {/* Mock / Demo */}
+              <button
+                onClick={() => handleCheckout('mock')}
+                disabled={loading}
+                className="w-full bg-[#2ecc71] hover:bg-[#27ae60] disabled:bg-[#454756] disabled:text-gray-500 text-white font-bold py-4 rounded-xl text-base transition-all flex items-center justify-center gap-2 shadow-lg shadow-[#2ecc71]/10"
+              >
+                {loading && loadingMethod === 'mock' ? (
+                  <><Loader2 className="animate-spin w-5 h-5" /> Đang xử lý...</>
+                ) : (
+                  <>🧪 Thanh toán thử (Demo)</>
+                )}
+              </button>
+            </div>
           </div>
         </div>
       </div>

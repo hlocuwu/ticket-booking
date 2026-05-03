@@ -5,6 +5,7 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import EventDetails from './pages/EventDetails';
 import Payment from './pages/Payment';
+import PaymentCallback from './pages/PaymentCallback';
 import Profile from './pages/Profile';
 import MyTickets from './pages/MyTickets';
 import ProtectedRoute from './components/common/ProtectedRoute';
@@ -29,6 +30,15 @@ function App() {
             element={
               <ProtectedRoute>
                 <div className="max-w-7xl mx-auto px-4 py-8"><Payment /></div>
+              </ProtectedRoute>
+            } 
+          />
+
+          <Route 
+            path="/payment/callback" 
+            element={
+              <ProtectedRoute>
+                <PaymentCallback />
               </ProtectedRoute>
             } 
           />

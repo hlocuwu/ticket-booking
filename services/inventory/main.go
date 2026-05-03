@@ -35,6 +35,11 @@ type ReserveRequest struct {
         OwnerID  string `json:"owner_id" binding:"required"`
 }
 
+type ReserveBatchRequest struct {
+        TicketIDs []int  `json:"ticket_ids" binding:"required"`
+        OwnerID   string `json:"owner_id" binding:"required"`
+}
+
 func main() {
         fmt.Println("Starting Inventory Service...")
 
@@ -71,7 +76,15 @@ func main() {
         })
 
         router.GET("/tickets", func(c *gin.Context) {
-                rows, err := db.Query("SELECT id, event_id, zone_id, seat_name, is_reserved FROM tickets")
+                var (
+                        rows *sql.Rows
+                        err  error
+                )
+                if eventID := c.Query("event_id"); eventID != "" {
+                        rows, err = db.Query("SELECT id, event_id, zone_id, seat_name, is_reserved FROM tickets WHERE event_id = $1", eventID)
+                } else {
+                        rows, err = db.Query("SELECT id, event_id, zone_id, seat_name, is_reserved FROM tickets")
+                }
                 if err != nil {
                         log.Printf("Database error: %v", err)
                         c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch tickets"})
@@ -96,7 +109,7 @@ func main() {
                         SELECT t.id, t.event_id, e.name, TO_CHAR(e.date, 'YYYY-MM-DD'), COALESCE(e.time, ''), e.location, t.seat_name, COALESCE(e.image_url, '')
                         FROM tickets t
                         JOIN events e ON t.event_id = e.id
-                        WHERE t.owner_id = $1
+                        WHERE t.owner_id = $1 AND t.is_confirmed = true
                         ORDER BY e.date DESC, t.id ASC
                 `, userID)
                 if err != nil {
@@ -145,6 +158,114 @@ func main() {
                         "message":   "Ticket successfully reserved!",
                         "ticket_id": req.TicketID,
                 })
+        })
+
+        router.POST("/tickets/reserve-batch", func(c *gin.Context) {
+                var req ReserveBatchRequest
+                if err := c.ShouldBindJSON(&req); err != nil {
+                        c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request payload. 'ticket_ids' and 'owner_id' are required."})
+                        return
+                }
+
+                tx, err := db.Begin()
+                if err != nil {
+                        c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to start transaction"})
+                        return
+                }
+                // Using defer tx.Rollback() ensures rollback if not committed.
+                defer tx.Rollback()
+
+                for _, ticketID := range req.TicketIDs {
+                        result, err := tx.Exec("UPDATE tickets SET is_reserved = true, owner_id = $2 WHERE id = $1 AND is_reserved = false", ticketID, req.OwnerID)
+                        if err != nil {
+                                log.Printf("Database error during batch reservation: %v", err)
+                                c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal server error"})
+                                return
+                        }
+
+                        rowsAffected, err := result.RowsAffected()
+                        if err != nil || rowsAffected == 0 {
+                                c.JSON(http.StatusConflict, gin.H{"error": fmt.Sprintf("Ticket %d is already reserved or does not exist", ticketID)})
+                                return
+                        }
+                }
+
+                if err := tx.Commit(); err != nil {
+                        log.Printf("Failed to commit transaction: %v", err)
+                        c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to complete reservation"})
+                        return
+                }
+
+                c.JSON(http.StatusOK, gin.H{
+                        "message":    "Tickets successfully reserved!",
+                        "ticket_ids": req.TicketIDs,
+                })
+        })
+
+        router.POST("/tickets/rollback-batch", func(c *gin.Context) {
+                var req ReserveBatchRequest
+                if err := c.ShouldBindJSON(&req); err != nil {
+                        c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request payload. 'ticket_ids' and 'owner_id' are required."})
+                        return
+                }
+
+                tx, err := db.Begin()
+                if err != nil {
+                        c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to start transaction"})
+                        return
+                }
+                defer tx.Rollback()
+
+                for _, ticketID := range req.TicketIDs {
+                        _, err := tx.Exec("UPDATE tickets SET is_reserved = false, owner_id = NULL WHERE id = $1 AND owner_id = $2", ticketID, req.OwnerID)
+                        if err != nil {
+                                log.Printf("Database error during batch rollback: %v", err)
+                                c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal server error"})
+                                return
+                        }
+                }
+
+                if err := tx.Commit(); err != nil {
+                        log.Printf("Failed to commit transaction: %v", err)
+                        c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to complete rollback"})
+                        return
+                }
+
+                c.JSON(http.StatusOK, gin.H{
+                        "message": "Tickets successfully rolled back",
+                })
+        })
+
+        router.POST("/tickets/confirm-batch", func(c *gin.Context) {
+                var req ReserveBatchRequest
+                if err := c.ShouldBindJSON(&req); err != nil {
+                        c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request payload. 'ticket_ids' and 'owner_id' are required."})
+                        return
+                }
+
+                tx, err := db.Begin()
+                if err != nil {
+                        c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to start transaction"})
+                        return
+                }
+                defer tx.Rollback()
+
+                for _, ticketID := range req.TicketIDs {
+                        _, err := tx.Exec("UPDATE tickets SET is_confirmed = true WHERE id = $1 AND owner_id = $2 AND is_reserved = true", ticketID, req.OwnerID)
+                        if err != nil {
+                                log.Printf("Database error during batch confirm: %v", err)
+                                c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal server error"})
+                                return
+                        }
+                }
+
+                if err := tx.Commit(); err != nil {
+                        log.Printf("Failed to commit confirm transaction: %v", err)
+                        c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to confirm tickets"})
+                        return
+                }
+
+                c.JSON(http.StatusOK, gin.H{"message": "Tickets confirmed successfully"})
         })
 
         port := os.Getenv("PORT")

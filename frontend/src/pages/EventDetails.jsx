@@ -105,8 +105,8 @@ export default function EventDetails() {
   }, [selectedTickets, queueStatus]);
     const fetchInventory = useCallback(async () => {
       try {
-        const res = await inventoryApi.get('/tickets');
-        const ticketsForEvent = res.data.filter(t => t.event_id === Number(id) && !t.is_reserved);
+        const res = await inventoryApi.get(`/tickets?event_id=${id}`);
+        const ticketsForEvent = res.data.filter(t => !t.is_reserved);
         
         const counts = {};
         ticketsForEvent.forEach(t => {
@@ -169,7 +169,12 @@ export default function EventDetails() {
       navigate('/login');
       return;
     }
-    
+
+    // Xoá session cũ để timer và vé đã chọn reset hoàn toàn
+    sessionStorage.removeItem(SESSION_KEY);
+    setSelectedTickets({});
+    setTimeLeft(300);
+
     try {
       await queueApi.post('/queue/join', { user_id: user.username });
       setQueueStatus('IN_QUEUE');

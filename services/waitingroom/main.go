@@ -82,7 +82,24 @@ func main() {
 		})
 	})
 
-	// 2. ENDPOINT: Check queue status (position)
+	// 2. ENDPOINT: Leave the queue
+	router.POST("/queue/leave", func(c *gin.Context) {
+		var req JoinRequest
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "user_id is required"})
+			return
+		}
+
+		if err := rdb.ZRem(ctx, queueKey, req.UserID).Err(); err != nil {
+			log.Printf("Redis error: %v", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to leave queue"})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{"message": "Left queue successfully", "user_id": req.UserID})
+	})
+
+	// 3. ENDPOINT: Check queue status (position)
 	router.GET("/queue/status", func(c *gin.Context) {
 		userID := c.Query("user_id")
 		if userID == "" {
