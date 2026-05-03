@@ -79,8 +79,10 @@ export default function Navbar() {
       <div className="max-w-[1280px] mx-auto px-4 h-20 md:h-[84px] flex justify-between items-center gap-6">
         
         {/* Logo */}
-        <Link to="/" className="whitespace-nowrap flex items-center -ml-2 md:-ml-4">
-          <img src={logo} alt="FlashTicket" className="h-14 md:h-[68px] w-auto object-contain" />
+        <Link to="/" className="whitespace-nowrap flex items-center shrink-0">
+          <div className="bg-white rounded-xl px-3 py-1.5 shadow-md shadow-black/20">
+            <img src={logo} alt="FlashTicket" className="h-10 md:h-12 w-auto object-contain" />
+          </div>
         </Link>
 
         {/* Search Bar - Center */}

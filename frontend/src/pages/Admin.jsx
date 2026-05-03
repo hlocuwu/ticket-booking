@@ -28,22 +28,25 @@ function fmtShortName(name, max = 18) {
   return name.length > max ? name.slice(0, max) + '…' : name;
 }
 
-// ── Simple bar chart (CSS/SVG, no deps) ──────────────────────────────────────
+// ── Simple bar chart (CSS, no deps) ──────────────────────────────────────────
 function BarChart({ data, valueKey, labelKey, color = '#00b14f', formatVal }) {
   const max = Math.max(...data.map(d => d[valueKey]), 1);
+  const BAR_MAX_H = 140;
   return (
-    <div className="flex items-end gap-2 h-44 pt-4">
+    <div className="flex items-end gap-2 pt-2" style={{ height: '176px' }}>
       {data.map((d, i) => {
-        const pct = Math.max((d[valueKey] / max) * 100, 2);
+        const barH = Math.max(Math.round((d[valueKey] / max) * BAR_MAX_H), 4);
         return (
-          <div key={i} className="flex-1 flex flex-col items-center gap-1 group relative">
-            <div
-              className="w-full rounded-t-md transition-all duration-500"
-              style={{ height: `${pct}%`, backgroundColor: color, opacity: 0.85 }}
-            />
-            {/* Tooltip */}
-            <div className="absolute bottom-full mb-1 left-1/2 -translate-x-1/2 bg-gray-900 text-white text-xs rounded px-2 py-1 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
-              {formatVal ? formatVal(d[valueKey]) : d[valueKey]}
+          <div key={i} className="flex-1 flex flex-col items-center gap-1 group justify-end">
+            <div className="relative w-full" style={{ height: `${barH}px` }}>
+              {/* Tooltip */}
+              <div className="absolute bottom-full mb-1 left-1/2 -translate-x-1/2 bg-gray-900 text-white text-xs rounded px-2 py-1 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
+                {formatVal ? formatVal(d[valueKey]) : d[valueKey]}
+              </div>
+              <div
+                className="w-full h-full rounded-t-md transition-all duration-500"
+                style={{ backgroundColor: color, opacity: 0.85 }}
+              />
             </div>
             <span className="text-[10px] text-gray-400 truncate w-full text-center leading-tight">
               {fmtShortName(d[labelKey], 12)}
