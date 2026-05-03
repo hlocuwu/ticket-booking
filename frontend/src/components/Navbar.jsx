@@ -23,18 +23,27 @@ export default function Navbar() {
   const [history, setHistory] = useState(getHistory);
   const [showHistory, setShowHistory] = useState(false);
   const [showMobileSearch, setShowMobileSearch] = useState(false);
+  const [showUserMenu, setShowUserMenu] = useState(false);
   const navigate = useNavigate();
   const formRef = useRef(null);
+  const menuRef = useRef(null);
 
-  // Close dropdown when clicking outside
+  // Close dropdowns when clicking outside
   useEffect(() => {
     const handler = (e) => {
       if (formRef.current && !formRef.current.contains(e.target)) {
         setShowHistory(false);
       }
+      if (menuRef.current && !menuRef.current.contains(e.target)) {
+        setShowUserMenu(false);
+      }
     };
     document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
+    document.addEventListener('touchstart', handler);
+    return () => {
+      document.removeEventListener('mousedown', handler);
+      document.removeEventListener('touchstart', handler);
+    };
   }, []);
 
   const handleSearch = (e) => {
@@ -154,25 +163,48 @@ export default function Navbar() {
             </button>
 
             {user ? (
-              <div className="group relative cursor-pointer flex items-center gap-2 text-white hover:text-green-100 transition-colors py-2">
-                <User size={22} />
-                <span className="hidden sm:block text-sm font-semibold truncate max-w-[100px]">{user.username}</span>
-                <div className="absolute top-full right-0 mt-1 w-56 bg-white text-gray-800 rounded-2xl shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 border border-gray-100 p-2 flex flex-col before:content-[''] before:absolute before:-top-4 before:left-0 before:w-full before:h-4">
-                  <Link to="/profile" className="flex items-center gap-3 w-full px-3 py-2.5 hover:bg-gray-100 rounded-lg transition-colors text-[15px] font-medium text-gray-700">
-                    <User size={20} strokeWidth={2.5} className="text-gray-600" /><span>Tài khoản của tôi</span>
-                  </Link>
-                  <Link to="/my-tickets" className="flex items-center gap-3 w-full px-3 py-2.5 hover:bg-gray-100 rounded-lg transition-colors text-[15px] font-medium text-gray-700">
-                    <Ticket size={20} strokeWidth={2.5} className="text-gray-600" /><span>Vé của tôi</span>
-                  </Link>
-                  {user?.username === 'admin' && (
-                    <Link to="/admin" className="flex items-center gap-3 w-full px-3 py-2.5 hover:bg-gray-100 rounded-lg transition-colors text-[15px] font-medium text-gray-700">
-                      <LayoutDashboard size={20} strokeWidth={2.5} className="text-gray-600" /><span>Quản trị</span>
+              <div ref={menuRef} className="relative flex items-center">
+                <button
+                  onClick={() => setShowUserMenu(v => !v)}
+                  className="flex items-center gap-2 text-white hover:text-green-100 transition-colors py-2 cursor-pointer bg-transparent border-none"
+                >
+                  <User size={22} />
+                  <span className="hidden sm:block text-sm font-semibold truncate max-w-[100px]">{user.username}</span>
+                </button>
+
+                {showUserMenu && (
+                  <div className="absolute top-full right-0 mt-1 w-56 bg-white text-gray-800 rounded-2xl shadow-xl border border-gray-100 p-2 flex flex-col z-50">
+                    <Link
+                      to="/profile"
+                      onClick={() => setShowUserMenu(false)}
+                      className="flex items-center gap-3 w-full px-3 py-2.5 hover:bg-gray-100 active:bg-gray-100 rounded-lg transition-colors text-[15px] font-medium text-gray-700"
+                    >
+                      <User size={20} strokeWidth={2.5} className="text-gray-600" /><span>Tài khoản của tôi</span>
                     </Link>
-                  )}
-                  <button onClick={logout} className="flex items-center gap-3 w-full px-3 py-2.5 hover:bg-gray-100 rounded-lg transition-colors text-[15px] font-medium text-red-500">
-                    <LogOut size={20} strokeWidth={2.5} className="text-red-500 opacity-80" /><span>Đăng xuất</span>
-                  </button>
-                </div>
+                    <Link
+                      to="/my-tickets"
+                      onClick={() => setShowUserMenu(false)}
+                      className="flex items-center gap-3 w-full px-3 py-2.5 hover:bg-gray-100 active:bg-gray-100 rounded-lg transition-colors text-[15px] font-medium text-gray-700"
+                    >
+                      <Ticket size={20} strokeWidth={2.5} className="text-gray-600" /><span>Vé của tôi</span>
+                    </Link>
+                    {user?.username === 'admin' && (
+                      <Link
+                        to="/admin"
+                        onClick={() => setShowUserMenu(false)}
+                        className="flex items-center gap-3 w-full px-3 py-2.5 hover:bg-gray-100 active:bg-gray-100 rounded-lg transition-colors text-[15px] font-medium text-gray-700"
+                      >
+                        <LayoutDashboard size={20} strokeWidth={2.5} className="text-gray-600" /><span>Quản trị</span>
+                      </Link>
+                    )}
+                    <button
+                      onClick={() => { setShowUserMenu(false); logout(); }}
+                      className="flex items-center gap-3 w-full px-3 py-2.5 hover:bg-gray-100 active:bg-gray-100 rounded-lg transition-colors text-[15px] font-medium text-red-500"
+                    >
+                      <LogOut size={20} strokeWidth={2.5} className="text-red-500 opacity-80" /><span>Đăng xuất</span>
+                    </button>
+                  </div>
+                )}
               </div>
             ) : (
               <Link to="/login" className="flex items-center gap-2 text-white hover:text-green-100 transition-colors">
