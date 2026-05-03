@@ -2,7 +2,7 @@ import { useEffect, useState, useContext, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { eventApi, queueApi, inventoryApi, bookingApi } from '../services/apiClient';
 import { AuthContext } from '../context/AuthContext';
-import { Calendar, MapPin, Ticket, CheckCircle, RefreshCcw, ChevronDown, ChevronUp, X, ZoomIn } from 'lucide-react';
+import { Calendar, MapPin, Ticket, CheckCircle, RefreshCcw, ChevronDown, ChevronUp, X, ZoomIn, ShieldCheck } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export default function EventDetails() {
@@ -40,6 +40,9 @@ export default function EventDetails() {
   const [selectedTickets, setSelectedTickets] = useState(restored ? restored.selectedTickets : {});
   const [showImageModal, setShowImageModal] = useState(false);
   const [availableCounts, setAvailableCounts] = useState({});
+  const [showCaptcha, setShowCaptcha] = useState(false);
+  const [captchaInput, setCaptchaInput] = useState('');
+  const [captchaQ, setCaptchaQ] = useState(null);
 
   const pollInterval = useRef(null);
   const inventoryPollInterval = useRef(null);
@@ -161,6 +164,48 @@ export default function EventDetails() {
       navigate('/payment', { state: { selectedTickets, event, total: calculateTotal(), ticketTypes, startTimestamp } });
     } else {
       toast.error('Vui lòng chọn ít nhất 1 vé');
+    }
+  };
+
+  const openCaptcha = () => {
+    if (!user) {
+      toast.error('Vui lòng đăng nhập để mua vé');
+      navigate('/login');
+      return;
+    }
+    const a = Math.floor(Math.random() * 9) + 1;
+    const b = Math.floor(Math.random() * 9) + 1;
+    const ops = ['+', '-', 'x'];
+    const op = ops[Math.floor(Math.random() * ops.length)];
+    let result;
+    if (op === '+') result = a + b;
+    else if (op === '-') result = Math.abs(a - b);
+    else result = a * b;
+    const displayA = op === '-' ? Math.max(a, b) : a;
+    const displayB = op === '-' ? Math.min(a, b) : b;
+    setCaptchaQ({ a: displayA, b: displayB, op, result });
+    setCaptchaInput('');
+    setShowCaptcha(true);
+  };
+
+  const handleCaptchaSubmit = () => {
+    if (parseInt(captchaInput, 10) === captchaQ.result) {
+      setShowCaptcha(false);
+      joinQueue();
+    } else {
+      const a = Math.floor(Math.random() * 9) + 1;
+      const b = Math.floor(Math.random() * 9) + 1;
+      const ops = ['+', '-', 'x'];
+      const op = ops[Math.floor(Math.random() * ops.length)];
+      let result;
+      if (op === '+') result = a + b;
+      else if (op === '-') result = Math.abs(a - b);
+      else result = a * b;
+      const displayA = op === '-' ? Math.max(a, b) : a;
+      const displayB = op === '-' ? Math.min(a, b) : b;
+      setCaptchaQ({ a: displayA, b: displayB, op, result });
+      setCaptchaInput('');
+      toast.error('Sai rồi! Hãy thử lại.');
     }
   };
 
@@ -296,8 +341,8 @@ export default function EventDetails() {
                    Sự kiện đã kết thúc
                  </div>
                ) : queueStatus === 'NOT_JOINED' ? (
-                 <button 
-                   onClick={joinQueue}
+                 <button
+                   onClick={openCaptcha}
                    className="w-full bg-[#2ecc71] hover:bg-[#27ae60] text-white font-bold py-3 rounded-lg text-lg transition-colors shadow-lg"
                  >
                    Mua vé ngay
@@ -469,6 +514,50 @@ export default function EventDetails() {
         )}
 
       </div>
+
+      {/* CAPTCHA Modal */}
+      {showCaptcha && captchaQ && (
+        <div className="fixed inset-0 z-[100] bg-black/70 flex items-center justify-center p-4 backdrop-blur-sm">
+          <div className="bg-[#31333e] border border-[#454756] rounded-2xl shadow-2xl w-full max-w-sm p-8 flex flex-col items-center gap-6">
+            <div className="w-16 h-16 bg-[#2ecc71]/10 border border-[#2ecc71]/30 rounded-full flex items-center justify-center">
+              <ShieldCheck className="w-8 h-8 text-[#2ecc71]" />
+            </div>
+            <div className="text-center">
+              <h3 className="text-xl font-bold text-white mb-1">Xác minh bạn là người thật</h3>
+              <p className="text-gray-400 text-sm">Trả lời đúng phép tính bên dưới để tiếp tục</p>
+            </div>
+            <div className="bg-[#1b1c21] border border-[#454756] rounded-xl px-10 py-6 text-center">
+              <span className="text-4xl font-black text-white tracking-widest">
+                {captchaQ.a} {captchaQ.op} {captchaQ.b} = ?
+              </span>
+            </div>
+            <input
+              type="number"
+              value={captchaInput}
+              onChange={e => setCaptchaInput(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleCaptchaSubmit()}
+              placeholder="Nhập kết quả..."
+              autoFocus
+              className="w-full bg-[#2a2c36] border border-[#454756] focus:border-[#2ecc71] text-white text-center text-2xl font-bold rounded-xl px-4 py-3 outline-none transition-colors"
+            />
+            <div className="flex gap-3 w-full">
+              <button
+                onClick={() => setShowCaptcha(false)}
+                className="flex-1 bg-[#2a2c36] hover:bg-[#454756] text-gray-300 font-semibold py-3 rounded-xl transition-colors"
+              >
+                Hủy
+              </button>
+              <button
+                onClick={handleCaptchaSubmit}
+                disabled={captchaInput === ''}
+                className="flex-1 bg-[#2ecc71] hover:bg-[#27ae60] disabled:bg-[#454756] disabled:text-gray-500 text-white font-bold py-3 rounded-xl transition-colors"
+              >
+                Xác nhận
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Image Zoom Modal */}
       {showImageModal && (
