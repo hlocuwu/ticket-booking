@@ -217,7 +217,7 @@ func main() {
                 defer tx.Rollback()
 
                 for _, ticketID := range req.TicketIDs {
-                        _, err := tx.Exec("UPDATE tickets SET is_reserved = false, owner_id = NULL WHERE id = $1 AND owner_id = $2", ticketID, req.OwnerID)
+                        _, err := tx.Exec("UPDATE tickets SET is_reserved = false, is_confirmed = false, owner_id = NULL WHERE id = $1 AND owner_id = $2", ticketID, req.OwnerID)
                         if err != nil {
                                 log.Printf("Database error during batch rollback: %v", err)
                                 c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal server error"})

@@ -66,6 +66,11 @@ func main() {
 		notificationURL = "http://localhost:8086"
 	}
 
+	appPublicURL := os.Getenv("APP_PUBLIC_URL")
+	if appPublicURL == "" {
+		appPublicURL = "http://localhost:3000"
+	}
+
 	client := resty.New()
 	router := gin.Default()
 
@@ -305,7 +310,7 @@ func main() {
     </div>
 
     <div style="text-align:center;margin:24px 0;">
-      <a href="http://localhost:3000/my-tickets"
+      <a href="%s/my-tickets"
          style="background-color:#2ecc71;color:#ffffff;padding:13px 36px;text-decoration:none;border-radius:8px;font-weight:bold;font-size:15px;display:inline-block;">
         Xem vé của tôi
       </a>
@@ -320,7 +325,7 @@ func main() {
   </div>
 
 </div>
-`, req.UserID, req.OrderID, req.EventName, len(req.TicketIDs), ticketIDStr, purchaseTime, amountStr)
+`, req.UserID, req.OrderID, req.EventName, len(req.TicketIDs), ticketIDStr, purchaseTime, amountStr, appPublicURL)
 
 		_, err := client.R().
 			SetBody(map[string]interface{}{
