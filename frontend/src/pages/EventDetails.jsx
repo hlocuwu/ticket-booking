@@ -241,6 +241,8 @@ export default function EventDetails() {
     setTimeLeft(300);
 
     try {
+      // Xóa entry cũ trong Redis trước (nếu còn sót) để tránh giữ vị trí cũ
+      await queueApi.post('/queue/leave', { user_id: user.username }).catch(() => {});
       await queueApi.post('/queue/join', { user_id: user.username });
       setQueueStatus('IN_QUEUE');
       toast.success('Đã tham gia phòng chờ!');
@@ -453,7 +455,7 @@ export default function EventDetails() {
 
                 {/* Danh sách các loại vé */}
                 <div className="lg:w-1/3 flex flex-col space-y-4">
-                  <div className="flex-1 space-y-3 overflow-y-auto pr-2 custom-scrollbar" style={{ maxHeight: '600px', minHeight: '600px' }}>
+                  <div className="flex-1 space-y-3 overflow-y-auto pr-2 custom-scrollbar" style={{ maxHeight: '60vh', minHeight: '200px' }}>
                     {ticketTypes.map(type => (
                       <div key={type.id} className="flex items-center justify-between bg-[#2a2c36] p-4 rounded-xl border border-[#454756] hover:border-[#2ecc71] transition-colors shrink-0">
                         <div>

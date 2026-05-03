@@ -22,6 +22,7 @@ export default function Navbar() {
   const [searchTerm, setSearchTerm] = useState('');
   const [history, setHistory] = useState(getHistory);
   const [showHistory, setShowHistory] = useState(false);
+  const [showMobileSearch, setShowMobileSearch] = useState(false);
   const navigate = useNavigate();
   const formRef = useRef(null);
 
@@ -76,129 +77,136 @@ export default function Navbar() {
 
   return (
     <nav className="bg-[#00b14f] sticky top-0 z-50 shadow-sm">
-      <div className="max-w-[1280px] mx-auto px-4 h-20 md:h-[84px] flex justify-between items-center gap-6">
-        
-        {/* Logo */}
-        <Link to="/" className="whitespace-nowrap flex items-center shrink-0">
-          <div className="bg-white rounded-xl px-3 py-1.5 shadow-md shadow-black/20">
-            <img src={logo} alt="FlashTicket" className="h-10 md:h-12 w-auto object-contain" />
-          </div>
-        </Link>
+      <div className="max-w-[1280px] mx-auto px-4">
 
-        {/* Search Bar - Center */}
-        <div ref={formRef} className="flex-1 max-w-[500px] xl:max-w-[600px] hidden md:block relative">
-          <form
-            onSubmit={handleSearch}
-            className="flex items-center bg-white rounded-full p-1.5 shadow-sm"
-          >
-            <div className="pl-4 flex items-center">
-              <Search size={22} className="text-gray-500 shrink-0" />
-            </div>
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              onFocus={() => setShowHistory(true)}
-              placeholder="Bạn tìm gì hôm nay?"
-              className="w-full pl-3 pr-2 py-2.5 outline-none text-gray-800 placeholder-gray-500 text-base bg-transparent"
-            />
-            {searchTerm && (
-              <button
-                type="button"
-                onClick={() => { setSearchTerm(''); setShowHistory(true); }}
-                className="p-1 mr-1 text-gray-400 hover:text-gray-600"
-              >
-                <X size={16} />
+        {/* Main row */}
+        <div className="h-16 md:h-[84px] flex justify-between items-center gap-4">
+
+          {/* Logo */}
+          <Link to="/" className="whitespace-nowrap flex items-center shrink-0">
+            <img src={logo} alt="FlashTicket" className="h-12 md:h-[68px] w-auto object-contain drop-shadow-[0_2px_6px_rgba(0,0,0,0.35)]" />
+          </Link>
+
+          {/* Search Bar - desktop */}
+          <div ref={formRef} className="flex-1 max-w-[500px] xl:max-w-[600px] hidden md:block relative">
+            <form onSubmit={handleSearch} className="flex items-center bg-white rounded-full p-1.5 shadow-sm">
+              <div className="pl-4 flex items-center">
+                <Search size={22} className="text-gray-500 shrink-0" />
+              </div>
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                onFocus={() => setShowHistory(true)}
+                placeholder="Bạn tìm gì hôm nay?"
+                className="w-full pl-3 pr-2 py-2.5 outline-none text-gray-800 placeholder-gray-500 text-base bg-transparent"
+              />
+              {searchTerm && (
+                <button type="button" onClick={() => { setSearchTerm(''); setShowHistory(true); }} className="p-1 mr-1 text-gray-400 hover:text-gray-600">
+                  <X size={16} />
+                </button>
+              )}
+              <button type="submit" className="bg-[#0a7c3a] text-white px-6 py-2.5 rounded-full text-base font-semibold hover:bg-[#086731] transition-colors whitespace-nowrap shrink-0">
+                Tìm kiếm
               </button>
-            )}
-            <button
-              type="submit"
-              className="bg-[#0a7c3a] text-white px-8 py-2.5 rounded-full text-base font-semibold hover:bg-[#086731] transition-colors whitespace-nowrap shrink-0"
-            >
-              Tìm kiếm
-            </button>
-          </form>
+            </form>
 
-          {/* Search History Dropdown */}
-          {showHistory && filteredHistory.length > 0 && (
-            <div className="absolute top-[calc(100%+8px)] left-0 right-0 bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden z-50">
-              <div className="flex items-center justify-between px-4 py-2.5 border-b border-gray-100">
-                <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Lịch sử tìm kiếm</span>
-                <button
-                  onClick={clearHistory}
-                  className="text-xs text-[#00b14f] hover:text-[#086731] font-semibold transition-colors"
-                >
-                  Xóa tất cả
-                </button>
-              </div>
-              <ul>
-                {filteredHistory.map((term) => (
-                  <li key={term}>
-                    <button
-                      onClick={() => applyHistoryItem(term)}
-                      className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors text-left group"
-                    >
-                      <Clock size={15} className="text-gray-400 shrink-0" />
-                      <span className="flex-1 text-gray-700 text-sm truncate">{term}</span>
-                      <button
-                        onClick={(e) => removeHistoryItem(e, term)}
-                        className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-gray-600 transition-all p-0.5 rounded"
-                      >
-                        <X size={13} />
+            {showHistory && filteredHistory.length > 0 && (
+              <div className="absolute top-[calc(100%+8px)] left-0 right-0 bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden z-50">
+                <div className="flex items-center justify-between px-4 py-2.5 border-b border-gray-100">
+                  <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Lịch sử tìm kiếm</span>
+                  <button onClick={clearHistory} className="text-xs text-[#00b14f] hover:text-[#086731] font-semibold transition-colors">Xóa tất cả</button>
+                </div>
+                <ul>
+                  {filteredHistory.map((term) => (
+                    <li key={term}>
+                      <button onClick={() => applyHistoryItem(term)} className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors text-left group">
+                        <Clock size={15} className="text-gray-400 shrink-0" />
+                        <span className="flex-1 text-gray-700 text-sm truncate">{term}</span>
+                        <button onClick={(e) => removeHistoryItem(e, term)} className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-gray-600 transition-all p-0.5 rounded">
+                          <X size={13} />
+                        </button>
                       </button>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-        </div>
-
-        {/* Right Nav Items */}
-        <div className="flex items-center space-x-8 text-base font-semibold text-white">
-          <button
-            onClick={() => {
-              if (user) { navigate('/my-tickets'); }
-              else { toast.error('Vui lòng đăng nhập để xem vé của bạn!'); navigate('/login'); }
-            }}
-            className="flex items-center gap-2.5 text-white hover:text-green-100 transition-colors bg-transparent border-none p-0 cursor-pointer"
-          >
-            <Ticket size={24} />
-            <span className="hidden sm:block text-base">Vé của tôi</span>
-          </button>
-
-          {user ? (
-            <div className="group relative cursor-pointer flex items-center gap-2.5 text-white hover:text-green-100 transition-colors py-2">
-              <User size={24} />
-              <span className="hidden sm:block text-base truncate max-w-[120px]">{user.username}</span>
-              <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1 w-56 bg-white text-gray-800 rounded-2xl shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 border border-gray-100 p-2 flex flex-col before:content-[''] before:absolute before:-top-4 before:left-0 before:w-full before:h-4">
-                <Link to="/profile" className="flex items-center gap-3 w-full px-3 py-2.5 hover:bg-gray-100 rounded-lg transition-colors text-[15px] font-medium text-gray-700">
-                  <User size={20} strokeWidth={2.5} className="text-gray-600" />
-                  <span>Tài khoản của tôi</span>
-                </Link>
-                <Link to="/my-tickets" className="flex items-center gap-3 w-full px-3 py-2.5 hover:bg-gray-100 rounded-lg transition-colors text-[15px] font-medium text-gray-700">
-                  <Ticket size={20} strokeWidth={2.5} className="text-gray-600" />
-                  <span>Vé của tôi</span>
-                </Link>
-                {user?.username === 'admin' && (
-                  <Link to="/admin" className="flex items-center gap-3 w-full px-3 py-2.5 hover:bg-gray-100 rounded-lg transition-colors text-[15px] font-medium text-gray-700">
-                    <LayoutDashboard size={20} strokeWidth={2.5} className="text-gray-600" />
-                    <span>Quản trị</span>
-                  </Link>
-                )}
-                <button onClick={logout} className="flex items-center gap-3 w-full px-3 py-2.5 hover:bg-gray-100 rounded-lg transition-colors text-[15px] font-medium text-red-500">
-                  <LogOut size={20} strokeWidth={2.5} className="text-red-500 opacity-80" />
-                  <span>Đăng xuất</span>
-                </button>
+                    </li>
+                  ))}
+                </ul>
               </div>
-            </div>
-          ) : (
-            <Link to="/login" className="flex items-center gap-2.5 text-white hover:text-green-100 transition-colors">
-              <User size={24} />
-              <span className="hidden sm:block text-base">Tài khoản</span>
-            </Link>
-          )}
+            )}
+          </div>
+
+          {/* Right Nav Items */}
+          <div className="flex items-center gap-5 text-white">
+            {/* Search icon - mobile only */}
+            <button
+              onClick={() => setShowMobileSearch(v => !v)}
+              className="md:hidden text-white hover:text-green-100 transition-colors p-1"
+              aria-label="Tìm kiếm"
+            >
+              {showMobileSearch ? <X size={22} /> : <Search size={22} />}
+            </button>
+
+            <button
+              onClick={() => { if (user) navigate('/my-tickets'); else { toast.error('Vui lòng đăng nhập để xem vé!'); navigate('/login'); } }}
+              className="flex items-center gap-2 text-white hover:text-green-100 transition-colors bg-transparent border-none p-0 cursor-pointer"
+            >
+              <Ticket size={22} />
+              <span className="hidden sm:block text-sm font-semibold">Vé của tôi</span>
+            </button>
+
+            {user ? (
+              <div className="group relative cursor-pointer flex items-center gap-2 text-white hover:text-green-100 transition-colors py-2">
+                <User size={22} />
+                <span className="hidden sm:block text-sm font-semibold truncate max-w-[100px]">{user.username}</span>
+                <div className="absolute top-full right-0 mt-1 w-56 bg-white text-gray-800 rounded-2xl shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 border border-gray-100 p-2 flex flex-col before:content-[''] before:absolute before:-top-4 before:left-0 before:w-full before:h-4">
+                  <Link to="/profile" className="flex items-center gap-3 w-full px-3 py-2.5 hover:bg-gray-100 rounded-lg transition-colors text-[15px] font-medium text-gray-700">
+                    <User size={20} strokeWidth={2.5} className="text-gray-600" /><span>Tài khoản của tôi</span>
+                  </Link>
+                  <Link to="/my-tickets" className="flex items-center gap-3 w-full px-3 py-2.5 hover:bg-gray-100 rounded-lg transition-colors text-[15px] font-medium text-gray-700">
+                    <Ticket size={20} strokeWidth={2.5} className="text-gray-600" /><span>Vé của tôi</span>
+                  </Link>
+                  {user?.username === 'admin' && (
+                    <Link to="/admin" className="flex items-center gap-3 w-full px-3 py-2.5 hover:bg-gray-100 rounded-lg transition-colors text-[15px] font-medium text-gray-700">
+                      <LayoutDashboard size={20} strokeWidth={2.5} className="text-gray-600" /><span>Quản trị</span>
+                    </Link>
+                  )}
+                  <button onClick={logout} className="flex items-center gap-3 w-full px-3 py-2.5 hover:bg-gray-100 rounded-lg transition-colors text-[15px] font-medium text-red-500">
+                    <LogOut size={20} strokeWidth={2.5} className="text-red-500 opacity-80" /><span>Đăng xuất</span>
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <Link to="/login" className="flex items-center gap-2 text-white hover:text-green-100 transition-colors">
+                <User size={22} />
+                <span className="hidden sm:block text-sm font-semibold">Tài khoản</span>
+              </Link>
+            )}
+          </div>
         </div>
+
+        {/* Mobile search row */}
+        {showMobileSearch && (
+          <div className="pb-3 md:hidden" ref={formRef}>
+            <form onSubmit={(e) => { handleSearch(e); setShowMobileSearch(false); }} className="flex items-center bg-white rounded-full px-4 py-2 shadow-sm gap-2">
+              <Search size={18} className="text-gray-400 shrink-0" />
+              <input
+                type="text"
+                value={searchTerm}
+                autoFocus
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Bạn tìm gì hôm nay?"
+                className="flex-1 outline-none text-gray-800 placeholder-gray-400 text-sm bg-transparent"
+              />
+              {searchTerm && (
+                <button type="button" onClick={() => setSearchTerm('')} className="text-gray-400">
+                  <X size={15} />
+                </button>
+              )}
+              <button type="submit" className="bg-[#0a7c3a] text-white px-4 py-1.5 rounded-full text-sm font-semibold shrink-0">
+                Tìm
+              </button>
+            </form>
+          </div>
+        )}
 
       </div>
     </nav>

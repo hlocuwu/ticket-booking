@@ -175,7 +175,7 @@ export default function Register() {
                   value={otp}
                   onChange={(e) => setOtp(e.target.value.replace(/[^0-9]/g, ''))}
                   placeholder="000000"
-                  className="w-full text-center text-3xl tracking-[1em] px-4 py-4 bg-[#2a2c36] border border-[#454756] text-white placeholder-gray-600 rounded-xl outline-none focus:border-[#00b14f] focus:ring-2 focus:ring-[#00b14f]/15 transition-all font-mono"
+                  className="w-full text-center text-2xl sm:text-3xl tracking-[0.5em] sm:tracking-[1em] px-4 py-4 bg-[#2a2c36] border border-[#454756] text-white placeholder-gray-600 rounded-xl outline-none focus:border-[#00b14f] focus:ring-2 focus:ring-[#00b14f]/15 transition-all font-mono"
                 />
               </div>
 

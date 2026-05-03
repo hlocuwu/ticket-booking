@@ -130,7 +130,7 @@ export default function Payment() {
     <div className="min-h-[80vh] bg-[#1b1c21] py-8 text-white">
       <div className="max-w-4xl mx-auto px-4">
         {/* Header row: Back button + Countdown timer */}
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
           <button
             onClick={() => navigate(-1)}
             className="flex items-center text-gray-400 hover:text-white font-semibold transition-colors"

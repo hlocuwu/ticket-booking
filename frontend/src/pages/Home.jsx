@@ -97,7 +97,7 @@ export default function Home() {
               <img src={banner.image} alt={banner.title} className="w-full h-full object-cover" />
               {/* Optional Gradient overlay for readability */}
               <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
-              <div className="absolute bottom-10 left-10 text-white font-black text-2xl lg:text-4xl shadow-sm drop-shadow-md">
+              <div className="absolute bottom-4 left-4 sm:bottom-10 sm:left-10 text-white font-black text-base sm:text-2xl lg:text-4xl shadow-sm drop-shadow-md">
                  {banner.title}
               </div>
             </div>
