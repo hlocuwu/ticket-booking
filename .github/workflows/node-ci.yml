@@ -1,0 +1,63 @@
+name: Node.js CI
+
+on:
+  push:
+    branches: [$default-branch]
+    paths:
+      - "frontend/**"
+      - "services/payment/**"
+      - ".github/workflows/node-ci.yml"
+  pull_request:
+    branches: [$default-branch]
+    paths:
+      - "frontend/**"
+      - "services/payment/**"
+      - ".github/workflows/node-ci.yml"
+
+jobs:
+  frontend:
+    name: Frontend
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build
+        run: npm run build
+
+  payment:
+    name: Payment Service
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: services/payment
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: services/payment/package-lock.json
+
+      - name: Install
+        run: npm ci
+
+      - name: Syntax check
+        run: node --check index.js
