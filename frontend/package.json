@@ -13,7 +13,7 @@
     "autoprefixer": "^10.4.27",
     "axios": "^1.15.0",
     "canvas-confetti": "^1.9.4",
-    "lucide-react": "^1.8.0",
+    "lucide-react": "^1.14.0",
     "postcss": "^8.5.9",
     "qrcode.react": "^4.2.0",
     "react": "^19.2.0",
