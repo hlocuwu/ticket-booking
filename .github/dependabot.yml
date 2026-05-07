@@ -1,0 +1,293 @@
+version: 2
+updates:
+  # ----------------------------------------
+  # GitHub Actions
+  # ----------------------------------------
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Asia/Ho_Chi_Minh"
+    labels:
+      - "dependencies"
+      - "github-actions"
+    open-pull-requests-limit: 5
+
+  # ----------------------------------------
+  # Docker — root (docker-compose.yml)
+  # images: postgres:15-alpine, redis:7-alpine
+  # ----------------------------------------
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Asia/Ho_Chi_Minh"
+    labels:
+      - "dependencies"
+      - "docker"
+    open-pull-requests-limit: 5
+
+  # Docker — frontend (node:22-alpine, nginx:alpine)
+  - package-ecosystem: "docker"
+    directory: "/frontend"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Asia/Ho_Chi_Minh"
+    labels:
+      - "dependencies"
+      - "docker"
+      - "frontend"
+
+  # Docker — auth service (golang:1.26-alpine)
+  - package-ecosystem: "docker"
+    directory: "/services/auth"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Asia/Ho_Chi_Minh"
+    labels:
+      - "dependencies"
+      - "docker"
+      - "service/auth"
+
+  # Docker — booking service
+  - package-ecosystem: "docker"
+    directory: "/services/booking"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Asia/Ho_Chi_Minh"
+    labels:
+      - "dependencies"
+      - "docker"
+      - "service/booking"
+
+  # Docker — event service
+  - package-ecosystem: "docker"
+    directory: "/services/event"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Asia/Ho_Chi_Minh"
+    labels:
+      - "dependencies"
+      - "docker"
+      - "service/event"
+
+  # Docker — inventory service
+  - package-ecosystem: "docker"
+    directory: "/services/inventory"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Asia/Ho_Chi_Minh"
+    labels:
+      - "dependencies"
+      - "docker"
+      - "service/inventory"
+
+  # Docker — notification service (python:3.10-slim)
+  - package-ecosystem: "docker"
+    directory: "/services/notification"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Asia/Ho_Chi_Minh"
+    labels:
+      - "dependencies"
+      - "docker"
+      - "service/notification"
+
+  # Docker — payment service (node:22-alpine)
+  - package-ecosystem: "docker"
+    directory: "/services/payment"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Asia/Ho_Chi_Minh"
+    labels:
+      - "dependencies"
+      - "docker"
+      - "service/payment"
+
+  # Docker — waitingroom service
+  - package-ecosystem: "docker"
+    directory: "/services/waitingroom"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Asia/Ho_Chi_Minh"
+    labels:
+      - "dependencies"
+      - "docker"
+      - "service/waitingroom"
+
+  # ----------------------------------------
+  # npm — frontend (React 19, Vite 7, Tailwind 4)
+  # ----------------------------------------
+  - package-ecosystem: "npm"
+    directory: "/frontend"
+    schedule:
+      interval: "weekly"
+      day: "tuesday"
+      time: "09:00"
+      timezone: "Asia/Ho_Chi_Minh"
+    labels:
+      - "dependencies"
+      - "javascript"
+      - "frontend"
+    open-pull-requests-limit: 10
+    groups:
+      react-ecosystem:
+        patterns:
+          - "react"
+          - "react-*"
+          - "@types/react*"
+      vite-ecosystem:
+        patterns:
+          - "vite"
+          - "@vitejs/*"
+          - "@tailwindcss/*"
+          - "tailwindcss"
+          - "postcss"
+          - "autoprefixer"
+      eslint-ecosystem:
+        patterns:
+          - "eslint"
+          - "eslint-*"
+          - "@eslint/*"
+
+  # npm — payment service (Express 5, Axios)
+  - package-ecosystem: "npm"
+    directory: "/services/payment"
+    schedule:
+      interval: "weekly"
+      day: "tuesday"
+      time: "09:00"
+      timezone: "Asia/Ho_Chi_Minh"
+    labels:
+      - "dependencies"
+      - "javascript"
+      - "service/payment"
+    open-pull-requests-limit: 5
+
+  # ----------------------------------------
+  # pip — notification service (Flask)
+  # ----------------------------------------
+  - package-ecosystem: "pip"
+    directory: "/services/notification"
+    schedule:
+      interval: "weekly"
+      day: "wednesday"
+      time: "09:00"
+      timezone: "Asia/Ho_Chi_Minh"
+    labels:
+      - "dependencies"
+      - "python"
+      - "service/notification"
+    open-pull-requests-limit: 5
+
+  # ----------------------------------------
+  # Go modules — auth service
+  # ----------------------------------------
+  - package-ecosystem: "gomod"
+    directory: "/services/auth"
+    schedule:
+      interval: "weekly"
+      day: "thursday"
+      time: "09:00"
+      timezone: "Asia/Ho_Chi_Minh"
+    labels:
+      - "dependencies"
+      - "go"
+      - "service/auth"
+    open-pull-requests-limit: 5
+    groups:
+      go-dependencies:
+        patterns:
+          - "*"
+
+  # Go modules — booking service
+  - package-ecosystem: "gomod"
+    directory: "/services/booking"
+    schedule:
+      interval: "weekly"
+      day: "thursday"
+      time: "09:00"
+      timezone: "Asia/Ho_Chi_Minh"
+    labels:
+      - "dependencies"
+      - "go"
+      - "service/booking"
+    open-pull-requests-limit: 5
+    groups:
+      go-dependencies:
+        patterns:
+          - "*"
+
+  # Go modules — event service
+  - package-ecosystem: "gomod"
+    directory: "/services/event"
+    schedule:
+      interval: "weekly"
+      day: "thursday"
+      time: "09:00"
+      timezone: "Asia/Ho_Chi_Minh"
+    labels:
+      - "dependencies"
+      - "go"
+      - "service/event"
+    open-pull-requests-limit: 5
+    groups:
+      go-dependencies:
+        patterns:
+          - "*"
+
+  # Go modules — inventory service
+  - package-ecosystem: "gomod"
+    directory: "/services/inventory"
+    schedule:
+      interval: "weekly"
+      day: "thursday"
+      time: "09:00"
+      timezone: "Asia/Ho_Chi_Minh"
+    labels:
+      - "dependencies"
+      - "go"
+      - "service/inventory"
+    open-pull-requests-limit: 5
+    groups:
+      go-dependencies:
+        patterns:
+          - "*"
+
+  # Go modules — waitingroom service
+  - package-ecosystem: "gomod"
+    directory: "/services/waitingroom"
+    schedule:
+      interval: "weekly"
+      day: "thursday"
+      time: "09:00"
+      timezone: "Asia/Ho_Chi_Minh"
+    labels:
+      - "dependencies"
+      - "go"
+      - "service/waitingroom"
+    open-pull-requests-limit: 5
+    groups:
+      go-dependencies:
+        patterns:
+          - "*"
