@@ -42,7 +42,7 @@ export default function Payment() {
     }
     const timer = setInterval(() => setTimeLeft(prev => prev - 1), 1000);
     return () => clearInterval(timer);
-  }, [timeLeft, success]);
+  }, [timeLeft]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!state) return null;
 
