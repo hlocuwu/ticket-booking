@@ -1,0 +1,8 @@
+issues:
+  exclude-rules:
+    # json.Unmarshal errors in tests are intentionally ignored for brevity
+    - path: _test\.go
+      linters: [errcheck]
+    # defer tx.Rollback() is idiomatic Go — error only occurs if tx already committed
+    - source: "defer tx\\.Rollback\\(\\)"
+      linters: [errcheck]
