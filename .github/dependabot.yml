@@ -1,0 +1,90 @@
+version: 2
+updates:
+  # Go modules
+  - package-ecosystem: gomod
+    directory: /services/auth
+    schedule:
+      interval: weekly
+      day: monday
+      time: "09:00"
+      timezone: Asia/Ho_Chi_Minh
+    labels: [dependencies, go]
+    open-pull-requests-limit: 3
+
+  - package-ecosystem: gomod
+    directory: /services/booking
+    schedule:
+      interval: weekly
+      day: monday
+      time: "09:00"
+      timezone: Asia/Ho_Chi_Minh
+    labels: [dependencies, go]
+    open-pull-requests-limit: 3
+
+  - package-ecosystem: gomod
+    directory: /services/event
+    schedule:
+      interval: weekly
+      day: monday
+      time: "09:00"
+      timezone: Asia/Ho_Chi_Minh
+    labels: [dependencies, go]
+    open-pull-requests-limit: 3
+
+  - package-ecosystem: gomod
+    directory: /services/inventory
+    schedule:
+      interval: weekly
+      day: monday
+      time: "09:00"
+      timezone: Asia/Ho_Chi_Minh
+    labels: [dependencies, go]
+    open-pull-requests-limit: 3
+
+  - package-ecosystem: gomod
+    directory: /services/waitingroom
+    schedule:
+      interval: weekly
+      day: monday
+      time: "09:00"
+      timezone: Asia/Ho_Chi_Minh
+    labels: [dependencies, go]
+    open-pull-requests-limit: 3
+
+  # npm — frontend
+  - package-ecosystem: npm
+    directory: /frontend
+    schedule:
+      interval: weekly
+      day: tuesday
+      time: "09:00"
+      timezone: Asia/Ho_Chi_Minh
+    labels: [dependencies, javascript]
+    open-pull-requests-limit: 5
+    groups:
+      react:
+        patterns: [react, react-*, "@types/react*"]
+      vite:
+        patterns: [vite, "@vitejs/*", "@tailwindcss/*", tailwindcss, postcss]
+
+  # npm — payment service
+  - package-ecosystem: npm
+    directory: /services/payment
+    schedule:
+      interval: weekly
+      day: tuesday
+      time: "09:00"
+      timezone: Asia/Ho_Chi_Minh
+    labels: [dependencies, javascript]
+    open-pull-requests-limit: 3
+
+  # pip — notification service
+  - package-ecosystem: pip
+    directory: /services/notification
+    schedule:
+      interval: weekly
+      day: wednesday
+      time: "09:00"
+      timezone: Asia/Ho_Chi_Minh
+    labels: [dependencies, python]
+    open-pull-requests-limit: 3
