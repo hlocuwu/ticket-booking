@@ -52,9 +52,9 @@ jobs:
         run: go mod tidy
 
       - name: Lint
-        uses: golangci/golangci-lint-action@v6
-        with:
-          working-directory: services/${{ matrix.service }}
+        run: |
+          go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+          golangci-lint run ./...
 
       - name: Vet
         run: go vet ./...
