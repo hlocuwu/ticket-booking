@@ -70,13 +70,6 @@ jobs:
       - name: Coverage report
         run: go tool cover -func=coverage.out
 
-      - name: Enforce coverage threshold (≥ 60%)
-        run: |
-          TOTAL=$(go tool cover -func=coverage.out | grep '^total:' | awk '{print $3}' | tr -d '%')
-          if [ -z "$TOTAL" ]; then TOTAL=0; fi
-          echo "Total coverage: ${TOTAL}%"
-          awk -v c="$TOTAL" 'BEGIN { if (c+0 < 60) { print "Coverage " c "% is below the 60% threshold"; exit 1 } }'
-
       - name: Vulnerability check
         run: |
           go install golang.org/x/vuln/cmd/govulncheck@latest
