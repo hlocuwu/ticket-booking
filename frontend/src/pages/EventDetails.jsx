@@ -89,7 +89,7 @@ export default function EventDetails() {
     } else if (timeLeft === 0 && queueStatus === 'TURN_ARRIVED') {
       // Session expired — phải rời hàng đợi để người tiếp theo vào được
       sessionStorage.removeItem(SESSION_KEY);
-      queueApi.post('/queue/leave', { user_id: user?.username }).catch(() => {});
+      queueApi.post('/queue/leave', { user_id: user?.username, event_id: id }).catch(() => {});
       toast.error('Đã hết thời gian thao tác! Lượt của bạn đã bị hủy.');
       setQueueStatus('NOT_JOINED');
       setTimeLeft(TOTAL_SECONDS);
@@ -242,8 +242,8 @@ export default function EventDetails() {
 
     try {
       // Xóa entry cũ trong Redis trước (nếu còn sót) để tránh giữ vị trí cũ
-      await queueApi.post('/queue/leave', { user_id: user.username }).catch(() => {});
-      await queueApi.post('/queue/join', { user_id: user.username });
+      await queueApi.post('/queue/leave', { user_id: user.username, event_id: id }).catch(() => {});
+      await queueApi.post('/queue/join', { user_id: user.username, event_id: id });
       setQueueStatus('IN_QUEUE');
       toast.success('Đã tham gia phòng chờ!');
       startPolling();
@@ -255,7 +255,7 @@ export default function EventDetails() {
   const startPolling = () => {
     pollInterval.current = setInterval(async () => {
       try {
-        const res = await queueApi.get('/queue/status', { params: { user_id: user.username } });
+        const res = await queueApi.get('/queue/status', { params: { user_id: user.username, event_id: id } });
         setQueuePosition(res.data.position);
         
         if (res.data.position <= 1) {

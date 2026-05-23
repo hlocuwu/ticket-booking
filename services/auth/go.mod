@@ -3,6 +3,8 @@ module github.com/hlocuwu/ticket-booking/services/auth
 go 1.26
 
 require (
+	github.com/DATA-DOG/go-sqlmock v1.5.2
+	github.com/alicebob/miniredis/v2 v2.30.0
 	github.com/gin-gonic/gin v1.12.0
 	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/lib/pq v1.12.0
@@ -11,6 +13,7 @@ require (
 )
 
 require (
+	github.com/alicebob/gopher-json v0.0.0-20200520072559-a9ecdc9d1d3a // indirect
 	github.com/bytedance/gopkg v0.1.4 // indirect
 	github.com/bytedance/sonic v1.15.0 // indirect
 	github.com/bytedance/sonic/loader v0.5.0 // indirect
@@ -35,6 +38,7 @@ require (
 	github.com/quic-go/quic-go v0.59.0 // indirect
 	github.com/twitchyliquid64/golang-asm v0.15.1 // indirect
 	github.com/ugorji/go/codec v1.3.1 // indirect
+	github.com/yuin/gopher-lua v0.0.0-20220504180219-658193537a64 // indirect
 	go.mongodb.org/mongo-driver/v2 v2.5.0 // indirect
 	golang.org/x/arch v0.25.0 // indirect
 	golang.org/x/net v0.52.0 // indirect

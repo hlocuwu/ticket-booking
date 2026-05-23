@@ -2,13 +2,13 @@ name: Node.js CI
 
 on:
   push:
-    branches: [$default-branch]
+    branches: [main]
     paths:
       - "frontend/**"
       - "services/payment/**"
       - ".github/workflows/node-ci.yml"
   pull_request:
-    branches: [$default-branch]
+    branches: [main]
     paths:
       - "frontend/**"
       - "services/payment/**"
@@ -37,6 +37,9 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      - name: Test
+        run: npm test
+
       - name: Build
         run: npm run build
 
@@ -59,5 +62,5 @@ jobs:
       - name: Install
         run: npm ci
 
-      - name: Syntax check
-        run: node --check index.js
+      - name: Test
+        run: npm test

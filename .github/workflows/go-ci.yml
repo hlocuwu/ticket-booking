@@ -2,7 +2,7 @@ name: Go CI
 
 on:
   push:
-    branches: [$default-branch]
+    branches: [main]
     paths:
       - "services/auth/**"
       - "services/booking/**"
@@ -11,7 +11,7 @@ on:
       - "services/waitingroom/**"
       - ".github/workflows/go-ci.yml"
   pull_request:
-    branches: [$default-branch]
+    branches: [main]
     paths:
       - "services/auth/**"
       - "services/booking/**"
@@ -47,6 +47,10 @@ jobs:
           key: go-build-${{ matrix.service }}-${{ hashFiles(format('services/{0}/go.sum', matrix.service)) }}
           restore-keys: go-build-${{ matrix.service }}-
 
+      - name: Sync dependencies
+        working-directory: services/${{ matrix.service }}
+        run: go mod tidy
+
       - name: Lint
         uses: golangci/golangci-lint-action@v6
         with:
@@ -63,6 +67,13 @@ jobs:
 
       - name: Coverage report
         run: go tool cover -func=coverage.out
+
+      - name: Enforce coverage threshold (≥ 60%)
+        run: |
+          TOTAL=$(go tool cover -func=coverage.out | grep '^total:' | awk '{print $3}' | tr -d '%')
+          if [ -z "$TOTAL" ]; then TOTAL=0; fi
+          echo "Total coverage: ${TOTAL}%"
+          awk -v c="$TOTAL" 'BEGIN { if (c+0 < 60) { print "Coverage " c "% is below the 60% threshold"; exit 1 } }'
 
       - name: Vulnerability check
         run: |

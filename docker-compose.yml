@@ -15,9 +15,9 @@ services:
     container_name: ticket_postgres
     restart: unless-stopped
     environment:
-      POSTGRES_USER: ticket_admin
-      POSTGRES_PASSWORD: secure_password_123
-      POSTGRES_DB: ticket_db 
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME:-ticket_db}
     ports:
       - "5432:5432"
     volumes:
@@ -26,7 +26,7 @@ services:
     networks:
       - ticket-network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ticket_admin -d ticket_db"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME:-ticket_db}"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -39,7 +39,7 @@ services:
       - "6379:6379"
     volumes:
       - redis_data:/data
-    command: redis-server --save 60 1 --loglevel warning 
+    command: redis-server --save 60 1 --loglevel warning
     networks:
       - ticket-network
     healthcheck:
@@ -61,13 +61,21 @@ services:
     ports:
       - "8081:8080"
     environment:
-      # This matches the container_name of our Postgres service
-      - DB_HOST=ticket_postgres 
+      - DB_HOST=ticket_postgres
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - DB_NAME=${DB_NAME:-ticket_db}
+      - PORT=8080
     networks:
       - ticket-network
     depends_on:
       postgres:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
 
   waitingroom:
     build:
@@ -79,7 +87,6 @@ services:
     ports:
       - "8082:8080"
     environment:
-      # This matches the container_name of our Redis service
       - REDIS_HOST=ticket_redis
       - PORT=8080
     networks:
@@ -87,6 +94,11 @@ services:
     depends_on:
       redis:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
 
   booking:
     build:
@@ -103,16 +115,22 @@ services:
       - AUTH_URL=http://ticket_auth_service:8080
       - PAYMENT_URL=http://ticket_payment_service:8080
       - NOTIFICATION_URL=http://ticket_notification_service:8086
+      - REDIS_HOST=ticket_redis:6379
       - APP_PUBLIC_URL=${APP_PUBLIC_URL}
       - PORT=8080
     networks:
       - ticket-network
     depends_on:
-      - inventory
-      - waitingroom
-      - auth                             # NEW: Add the dependency
-      - payment
-      - notification
+      inventory:
+        condition: service_healthy
+      waitingroom:
+        condition: service_healthy
+      auth:
+        condition: service_healthy
+      payment:
+        condition: service_healthy
+      notification:
+        condition: service_healthy
 
   event:
     build:
@@ -125,12 +143,21 @@ services:
       - "8084:8080"
     environment:
       - DB_HOST=ticket_postgres
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - DB_NAME=${DB_NAME:-ticket_db}
+      - JWT_SECRET=${JWT_SECRET}
       - PORT=8080
     networks:
       - ticket-network
     depends_on:
       postgres:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
 
   notification:
     build:
@@ -150,6 +177,11 @@ services:
       - SENDER_EMAIL=${SENDER_EMAIL}
     networks:
       - ticket-network
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8086/health')\" || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
 
   auth:
     build:
@@ -162,7 +194,12 @@ services:
       - "8085:8080"
     environment:
       - DB_HOST=ticket_postgres
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - DB_NAME=${DB_NAME:-ticket_db}
       - REDIS_HOST=ticket_redis:6379
+      - JWT_SECRET=${JWT_SECRET}
+      - NOTIFICATION_URL=http://ticket_notification_service:8086
       - PORT=8080
     networks:
       - ticket-network
@@ -171,6 +208,11 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
 
   payment:
     build:
@@ -184,8 +226,17 @@ services:
     environment:
       - PORT=8080
       - PAYMENT_PUBLIC_URL=${PAYMENT_PUBLIC_URL}
+      - MOMO_PARTNER_CODE=${MOMO_PARTNER_CODE:-MOMO}
+      - MOMO_ACCESS_KEY=${MOMO_ACCESS_KEY}
+      - MOMO_SECRET_KEY=${MOMO_SECRET_KEY}
+      - MOMO_ENDPOINT=${MOMO_ENDPOINT:-https://test-payment.momo.vn/v2/gateway/api/create}
     networks:
       - ticket-network
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
 
   frontend:
     build:
@@ -199,9 +250,13 @@ services:
     networks:
       - ticket-network
     depends_on:
-      - auth
-      - event
-      - waitingroom
-      - booking
-      - payment
-
+      auth:
+        condition: service_healthy
+      event:
+        condition: service_healthy
+      waitingroom:
+        condition: service_healthy
+      booking:
+        condition: service_started
+      payment:
+        condition: service_healthy

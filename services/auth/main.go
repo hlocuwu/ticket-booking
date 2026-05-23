@@ -3,11 +3,12 @@ package main
 import (
 	"bytes"
 	"context"
+	"crypto/rand"
 	"database/sql"
 	"encoding/json"
 	"fmt"
 	"log"
-	"math/rand"
+	"math/big"
 	"net/http"
 	"os"
 	"strings"
@@ -20,9 +21,17 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-var ctx = context.Background()
+var bgCtx = context.Background()
 
-var jwtKey = []byte("flashticket_super_secret_key_2026")
+var jwtKey []byte
+
+func mustGetEnv(key string) string {
+	v := os.Getenv(key)
+	if v == "" {
+		log.Fatalf("Required environment variable %s is not set", key)
+	}
+	return v
+}
 
 type AuthRequest struct {
 	Username string `json:"username" binding:"required"`
@@ -43,12 +52,15 @@ type OtpData struct {
 }
 
 func generateOTP() string {
-	r := rand.New(rand.NewSource(time.Now().UnixNano()))
-	return fmt.Sprintf("%06d", r.Intn(1000000))
+	n, err := rand.Int(rand.Reader, big.NewInt(1000000))
+	if err != nil {
+		log.Fatalf("crypto/rand error: %v", err)
+	}
+	return fmt.Sprintf("%06d", n.Int64())
 }
 
-func sendEmailNotification(toEmail, subject, body string) error {
-	url := "http://ticket_notification_service:8086/send-email"
+func sendEmailNotification(notificationURL, toEmail, subject, body string) error {
+	url := notificationURL + "/send-email"
 	payload := map[string]string{
 		"to_email": toEmail,
 		"subject":  subject,
@@ -71,48 +83,9 @@ type Claims struct {
 	jwt.RegisteredClaims
 }
 
-func main() {
-	fmt.Println("Starting Auth Service...")
-
-	// 1. Connect to PostgreSQL
-	dbHost := os.Getenv("DB_HOST")
-	if dbHost == "" {
-		dbHost = "localhost"
-	}
-	dbUser := "ticket_admin"
-	dbPassword := "secure_password_123"
-	dbName := "ticket_db"
-
-	connStr := fmt.Sprintf("host=%s port=5432 user=%s password=%s dbname=%s sslmode=disable",
-		dbHost, dbUser, dbPassword, dbName)
-
-	db, err := sql.Open("postgres", connStr)
-	if err != nil {
-		log.Fatalf("Error opening database: %v", err)
-	}
-	defer db.Close()
-
-	if err = db.Ping(); err != nil {
-		log.Fatalf("Could not connect to database: %v", err)
-	}
-	fmt.Println("✅ Auth Service connected to PostgreSQL!")
-
-	// 1.5 Connect to Redis
-	redisHost := os.Getenv("REDIS_HOST")
-	if redisHost == "" {
-		redisHost = "ticket_redis:6379"
-	}
-	rdb := redis.NewClient(&redis.Options{
-		Addr: redisHost,
-	})
-	if err := rdb.Ping(ctx).Err(); err != nil {
-		log.Fatalf("Could not connect to Redis: %v", err)
-	}
-	fmt.Println("✅ Auth Service connected to Redis!")
-
+func setupRouter(db *sql.DB, rdb *redis.Client, notificationURL string) *gin.Engine {
 	router := gin.Default()
 
-	// Healthcheck
 	router.GET("/health", func(c *gin.Context) {
 		if err := db.Ping(); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"status": "down"})
@@ -121,7 +94,6 @@ func main() {
 		c.JSON(http.StatusOK, gin.H{"status": "up", "service": "auth"})
 	})
 
-	// 2. ENDPOINT: Request OTP for registration
 	router.POST("/register/send-otp", func(c *gin.Context) {
 		var req AuthRequest
 		if err := c.ShouldBindJSON(&req); err != nil {
@@ -134,7 +106,6 @@ func main() {
 			return
 		}
 
-		// Check if username or email already exists in Postgres
 		var exists bool
 		err := db.QueryRow("SELECT EXISTS(SELECT 1 FROM users WHERE username = $1 OR email = $2)", req.Username, req.Email).Scan(&exists)
 		if err != nil {
@@ -146,17 +117,14 @@ func main() {
 			return
 		}
 
-		// Hash the password using bcrypt
 		hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to hash password"})
 			return
 		}
 
-		// Generate OTP
 		otp := generateOTP()
 
-		// Store in Redis (TTL: 5 minutes)
 		otpData := OtpData{
 			Username:       req.Username,
 			Email:          req.Email,
@@ -166,42 +134,23 @@ func main() {
 		jsonData, _ := json.Marshal(otpData)
 		redisKey := "otp:" + req.Email
 
-		err = rdb.Set(ctx, redisKey, jsonData, 5*time.Minute).Err()
+		err = rdb.Set(bgCtx, redisKey, jsonData, 5*time.Minute).Err()
 		if err != nil {
 			log.Printf("Redis Set Error: %v", err)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to store OTP"})
 			return
 		}
 
-		// Send Email
 		subject := "Mã xác thực OTP Đăng ký - FlashTicket"
-		body := fmt.Sprintf(`
-			<div style="font-family: Arial, sans-serif; max-w: 600px; margin: 0 auto; border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden;">
-				<div style="background-color: #00b14f; color: white; padding: 20px; text-align: center;">
-					<h2 style="margin: 0;">Xác thực tài khoản</h2>
-				</div>
-				<div style="padding: 20px; background-color: #ffffff; color: #333333;">
-					<p>Chào bạn,</p>
-					<p>Mã xác thực OTP của bạn là:</p>
-					<div style="text-align: center; margin: 30px 0;">
-						<span style="font-size: 32px; font-weight: bold; letter-spacing: 5px; color: #00b14f; background: #f0fdf4; padding: 15px 30px; border-radius: 8px; border: 2px dashed #00b14f;">%s</span>
-					</div>
-					<p>Mã này có hiệu lực trong vòng <strong>5 phút</strong>. Vui lòng không chia sẻ mã này với bất kỳ ai.</p>
-					<p>Trân trọng,<br>Đội ngũ FlashTicket</p>
-				</div>
-			</div>
-		`, otp)
+		body := fmt.Sprintf(`<div>OTP: %s</div>`, otp)
 
-		err = sendEmailNotification(req.Email, subject, body)
-		if err != nil {
+		if err := sendEmailNotification(notificationURL, req.Email, subject, body); err != nil {
 			log.Printf("Email Notification Error: %v", err)
-			// Continue even if email fails in local environment (since it simulates)
 		}
 
 		c.JSON(http.StatusOK, gin.H{"message": "OTP sent successfully"})
 	})
 
-	// 2.5 ENDPOINT: Verify OTP and create user
 	router.POST("/register/verify", func(c *gin.Context) {
 		var req VerifyRequest
 		if err := c.ShouldBindJSON(&req); err != nil {
@@ -210,7 +159,7 @@ func main() {
 		}
 
 		redisKey := "otp:" + req.Email
-		val, err := rdb.Get(ctx, redisKey).Result()
+		val, err := rdb.Get(bgCtx, redisKey).Result()
 		if err == redis.Nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Mã OTP đã hết hạn hoặc không tồn tại"})
 			return
@@ -231,7 +180,6 @@ func main() {
 			return
 		}
 
-		// Insert the new user into the database
 		_, err = db.Exec("INSERT INTO users (username, email, password_hash) VALUES ($1, $2, $3)", otpData.Username, otpData.Email, otpData.HashedPassword)
 		if err != nil {
 			if strings.Contains(err.Error(), "unique constraint") {
@@ -243,13 +191,11 @@ func main() {
 			return
 		}
 
-		// Delete OTP from Redis
-		rdb.Del(ctx, redisKey)
+		rdb.Del(bgCtx, redisKey)
 
 		c.JSON(http.StatusCreated, gin.H{"message": "User registered successfully"})
 	})
 
-	// 3. ENDPOINT: Login
 	router.POST("/login", func(c *gin.Context) {
 		var req AuthRequest
 		if err := c.ShouldBindJSON(&req); err != nil {
@@ -257,7 +203,6 @@ func main() {
 			return
 		}
 
-		// Fetch the user's hashed password from the database
 		var storedHash string
 		var actualUser string
 		err := db.QueryRow("SELECT username, password_hash FROM users WHERE username = $1 OR email = $1", req.Username).Scan(&actualUser, &storedHash)
@@ -270,14 +215,12 @@ func main() {
 			return
 		}
 
-		// Compare the provided password with the stored hash
 		err = bcrypt.CompareHashAndPassword([]byte(storedHash), []byte(req.Password))
 		if err != nil {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid credentials"})
 			return
 		}
 
-		// Password is correct! Generate the JWT.
 		expirationTime := time.Now().Add(1 * time.Hour)
 		claims := &Claims{
 			Username: actualUser,
@@ -288,7 +231,6 @@ func main() {
 
 		token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 		tokenString, err := token.SignedString(jwtKey)
-
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not generate token"})
 			return
@@ -297,7 +239,6 @@ func main() {
 		c.JSON(http.StatusOK, gin.H{"token": tokenString})
 	})
 
-	// 3.5 ENDPOINT: GET /profile
 	router.GET("/profile", func(c *gin.Context) {
 		authHeader := c.GetHeader("Authorization")
 		if authHeader == "" {
@@ -322,9 +263,7 @@ func main() {
 			return
 		}
 
-		// Fetch user details from DB
 		var email, fullName, phone, gender, avatar sql.NullString
-		// To format date properly to string, using NullTime or scan into string. We'll use NullString for date.
 		var dob sql.NullString
 
 		err = db.QueryRow("SELECT email, full_name, phone, CAST(dob AS VARCHAR), gender, avatar FROM users WHERE username = $1", claims.Username).Scan(
@@ -347,7 +286,6 @@ func main() {
 		})
 	})
 
-	// 3.6 ENDPOINT: PUT /profile (Cập nhật Profile)
 	router.PUT("/profile", func(c *gin.Context) {
 		authHeader := c.GetHeader("Authorization")
 		if authHeader == "" {
@@ -367,7 +305,6 @@ func main() {
 			return
 		}
 
-		// Nhận JSON payload mới từ người dùng
 		var req struct {
 			FullName string `json:"fullName"`
 			Phone    string `json:"phone"`
@@ -381,7 +318,6 @@ func main() {
 			return
 		}
 
-		// Update vào Database (dob = null thay vì rỗng nếu rỗng gõ vào error timestamp cast)
 		var dobPtr interface{}
 		if req.Dob != "" {
 			dobPtr = req.Dob
@@ -403,7 +339,6 @@ func main() {
 		c.JSON(http.StatusOK, gin.H{"message": "Profile updated successfully"})
 	})
 
-	// 3.7 ENDPOINT: PUT /password (Đổi mật khẩu)
 	router.PUT("/password", func(c *gin.Context) {
 		authHeader := c.GetHeader("Authorization")
 		if authHeader == "" {
@@ -432,7 +367,6 @@ func main() {
 			return
 		}
 
-		// Fetch current password hash
 		var storedHash string
 		err = db.QueryRow("SELECT password_hash FROM users WHERE username = $1", claims.Username).Scan(&storedHash)
 		if err != nil {
@@ -440,21 +374,18 @@ func main() {
 			return
 		}
 
-		// Validate current password
 		err = bcrypt.CompareHashAndPassword([]byte(storedHash), []byte(req.CurrentPassword))
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Mật khẩu hiện tại không đúng"})
 			return
 		}
 
-		// Hash new password
 		newHash, err := bcrypt.GenerateFromPassword([]byte(req.NewPassword), bcrypt.DefaultCost)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Lỗi hệ thống khi tạo mật khẩu"})
 			return
 		}
 
-		// Update database
 		_, err = db.Exec("UPDATE users SET password_hash = $1 WHERE username = $2", string(newHash), claims.Username)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Cập nhật mật khẩu thất bại"})
@@ -464,7 +395,6 @@ func main() {
 		c.JSON(http.StatusOK, gin.H{"message": "Đổi mật khẩu thành công"})
 	})
 
-	// 4. ENDPOINT: Verify a JWT
 	router.POST("/verify", func(c *gin.Context) {
 		authHeader := c.GetHeader("Authorization")
 		if authHeader == "" {
@@ -494,6 +424,58 @@ func main() {
 			"username": claims.Username,
 		})
 	})
+
+	return router
+}
+
+func main() {
+	fmt.Println("Starting Auth Service...")
+
+	jwtKey = []byte(mustGetEnv("JWT_SECRET"))
+
+	notificationURL := os.Getenv("NOTIFICATION_URL")
+	if notificationURL == "" {
+		notificationURL = "http://ticket_notification_service:8086"
+	}
+
+	dbHost := os.Getenv("DB_HOST")
+	if dbHost == "" {
+		dbHost = "localhost"
+	}
+	dbUser := mustGetEnv("DB_USER")
+	dbPassword := mustGetEnv("DB_PASSWORD")
+	dbName := os.Getenv("DB_NAME")
+	if dbName == "" {
+		dbName = "ticket_db"
+	}
+
+	connStr := fmt.Sprintf("host=%s port=5432 user=%s password=%s dbname=%s sslmode=disable",
+		dbHost, dbUser, dbPassword, dbName)
+
+	db, err := sql.Open("postgres", connStr)
+	if err != nil {
+		log.Fatalf("Error opening database: %v", err)
+	}
+	defer db.Close()
+
+	if err = db.Ping(); err != nil {
+		log.Fatalf("Could not connect to database: %v", err)
+	}
+	fmt.Println("✅ Auth Service connected to PostgreSQL!")
+
+	redisHost := os.Getenv("REDIS_HOST")
+	if redisHost == "" {
+		redisHost = "ticket_redis:6379"
+	}
+	rdb := redis.NewClient(&redis.Options{
+		Addr: redisHost,
+	})
+	if err := rdb.Ping(bgCtx).Err(); err != nil {
+		log.Fatalf("Could not connect to Redis: %v", err)
+	}
+	fmt.Println("✅ Auth Service connected to Redis!")
+
+	router := setupRouter(db, rdb, notificationURL)
 
 	port := os.Getenv("PORT")
 	if port == "" {

@@ -1,7 +1,36 @@
-# Nodejs
-node_modules
+# Environment
+.env
+.env.*
+!.env.example
+
+# Node.js
+node_modules/
+dist/
+coverage/
 
 # Python
+__pycache__/
+*.py[cod]
+*.pyo
+.coverage
+.coverage.*
+htmlcov/
+*.egg-info/
 
-# Golang
-.env
+# Go binaries (compiled output — no extension on Linux)
+services/auth/auth
+services/booking/booking
+services/event/event
+services/inventory/inventory
+services/waitingroom/waitingroom
+
+# Go test coverage
+coverage.out
+coverage.xml
+*.coverprofile
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo

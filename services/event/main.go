@@ -6,10 +6,48 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 
 	"github.com/gin-gonic/gin"
+	"github.com/golang-jwt/jwt/v5"
 	_ "github.com/lib/pq"
 )
+
+var jwtKey []byte
+
+type Claims struct {
+	Username string `json:"username"`
+	jwt.RegisteredClaims
+}
+
+// requireAdmin validates the JWT and ensures the caller is the admin user.
+func requireAdmin() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		authHeader := c.GetHeader("Authorization")
+		if authHeader == "" {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Authorization header is missing"})
+			return
+		}
+		parts := strings.SplitN(authHeader, " ", 2)
+		if len(parts) != 2 || parts[0] != "Bearer" {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invalid token format"})
+			return
+		}
+		claims := &Claims{}
+		token, err := jwt.ParseWithClaims(parts[1], claims, func(t *jwt.Token) (interface{}, error) {
+			return jwtKey, nil
+		})
+		if err != nil || !token.Valid {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invalid or expired token"})
+			return
+		}
+		if claims.Username != "admin" {
+			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "Admin access required"})
+			return
+		}
+		c.Next()
+	}
+}
 
 type Event struct {
 	ID          int    `json:"id"`
@@ -26,27 +64,7 @@ type Event struct {
 	MinPrice    int    `json:"min_price"`
 }
 
-func main() {
-	fmt.Println("Starting Event Service...")
-
-	dbHost := os.Getenv("DB_HOST")
-	if dbHost == "" {
-		dbHost = "localhost"
-	}
-	connStr := fmt.Sprintf("host=%s port=5432 user=%s password=%s dbname=%s sslmode=disable",
-		dbHost, "ticket_admin", "secure_password_123", "ticket_db")
-
-	db, err := sql.Open("postgres", connStr)
-	if err != nil {
-		log.Fatalf("Failed to connect to database: %v", err)
-	}
-	defer db.Close()
-
-	if err := db.Ping(); err != nil {
-		log.Fatalf("Database is unreachable: %v", err)
-	}
-	fmt.Println("✅ Successfully connected to internal Database!")
-
+func setupRouter(db *sql.DB) *gin.Engine {
 	router := gin.Default()
 
 	router.GET("/health", func(c *gin.Context) {
@@ -148,8 +166,11 @@ func main() {
 		c.JSON(http.StatusOK, zones)
 	})
 
+	// ── Admin routes (JWT required, username == "admin") ─────────────────────
+	admin := router.Group("/", requireAdmin())
+
 	// ── POST /events ─────────────────────────────────────────────────────────
-	router.POST("/events", func(c *gin.Context) {
+	admin.POST("/events", func(c *gin.Context) {
 		type ZoneReq struct {
 			Name        string `json:"name"`
 			Capacity    int    `json:"capacity"`
@@ -227,7 +248,7 @@ func main() {
 	})
 
 	// ── PUT /events/:id ───────────────────────────────────────────────────────
-	router.PUT("/events/:id", func(c *gin.Context) {
+	admin.PUT("/events/:id", func(c *gin.Context) {
 		type UpdateReq struct {
 			Name        string `json:"name"`
 			Time        string `json:"time"`
@@ -262,7 +283,7 @@ func main() {
 	})
 
 	// ── DELETE /events/:id ────────────────────────────────────────────────────
-	router.DELETE("/events/:id", func(c *gin.Context) {
+	admin.DELETE("/events/:id", func(c *gin.Context) {
 		result, err := db.Exec("DELETE FROM events WHERE id=$1", c.Param("id"))
 		if err != nil {
 			log.Printf("Delete event error: %v", err)
@@ -278,7 +299,7 @@ func main() {
 	})
 
 	// ── GET /admin/stats ──────────────────────────────────────────────────────
-	router.GET("/admin/stats", func(c *gin.Context) {
+	admin.GET("/admin/stats", func(c *gin.Context) {
 		type EventStat struct {
 			ID           int    `json:"id"`
 			Name         string `json:"name"`
@@ -325,7 +346,6 @@ func main() {
 			eventStats = []EventStat{}
 		}
 
-		// Category breakdown
 		type CatStat struct {
 			Category string `json:"category"`
 			Total    int    `json:"total"`
@@ -361,6 +381,52 @@ func main() {
 			"categories":    categories,
 		})
 	})
+
+	return router
+}
+
+func main() {
+	fmt.Println("Starting Event Service...")
+
+	dbHost := os.Getenv("DB_HOST")
+	if dbHost == "" {
+		dbHost = "localhost"
+	}
+	dbUser := os.Getenv("DB_USER")
+	if dbUser == "" {
+		log.Fatal("Required environment variable DB_USER is not set")
+	}
+	dbPassword := os.Getenv("DB_PASSWORD")
+	if dbPassword == "" {
+		log.Fatal("Required environment variable DB_PASSWORD is not set")
+	}
+	dbName := os.Getenv("DB_NAME")
+	if dbName == "" {
+		dbName = "ticket_db"
+	}
+	connStr := fmt.Sprintf("host=%s port=5432 user=%s password=%s dbname=%s sslmode=disable",
+		dbHost, dbUser, dbPassword, dbName)
+
+	db, err := sql.Open("postgres", connStr)
+	if err != nil {
+		log.Fatalf("Failed to connect to database: %v", err)
+	}
+	defer db.Close()
+
+	if err := db.Ping(); err != nil {
+		log.Fatalf("Database is unreachable: %v", err)
+	}
+	fmt.Println("✅ Successfully connected to internal Database!")
+
+	jwtKey = []byte(func() string {
+		s := os.Getenv("JWT_SECRET")
+		if s == "" {
+			log.Fatal("Required environment variable JWT_SECRET is not set")
+		}
+		return s
+	}())
+
+	router := setupRouter(db)
 
 	port := os.Getenv("PORT")
 	if port == "" {

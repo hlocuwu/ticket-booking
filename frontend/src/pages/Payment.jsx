@@ -40,7 +40,7 @@ export default function Payment() {
     if (timeLeft <= 0) {
       if (SESSION_KEY) sessionStorage.removeItem(SESSION_KEY);
       // Rời hàng đợi để người tiếp theo không bị treo
-      queueApi.post('/queue/leave', { user_id: user?.username }).catch(() => {});
+      queueApi.post('/queue/leave', { user_id: user?.username, event_id: String(state?.event?.id) }).catch(() => {});
       toast.error('Đã hết thời gian thao tác! Vui lòng đăng ký lại.');
       navigate(-1);
       return;
@@ -92,6 +92,7 @@ export default function Payment() {
 
       const response = await bookingApi.post('/book', {
         user_id: user.username,
+        event_id: String(event.id),
         ticket_ids: ticketIds,
         amount: total,
         return_url: `${window.location.origin}/payment/callback`,

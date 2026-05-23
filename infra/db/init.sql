@@ -1,9 +1,3 @@
--- Drop everything existing to ensure clean state on init
-DROP TABLE IF EXISTS tickets CASCADE;
-DROP TABLE IF EXISTS event_zones CASCADE;
-DROP TABLE IF EXISTS events CASCADE;
-DROP TABLE IF EXISTS users CASCADE;
-
 CREATE TABLE IF NOT EXISTS users (
     id SERIAL PRIMARY KEY,
     username VARCHAR(50) UNIQUE NOT NULL,
@@ -51,6 +45,15 @@ CREATE TABLE IF NOT EXISTS tickets (
     CONSTRAINT fk_event_ticket FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE,
     CONSTRAINT fk_zone FOREIGN KEY (zone_id) REFERENCES event_zones(id) ON DELETE CASCADE
 );
+
+-- Indexes for hot query paths
+CREATE INDEX IF NOT EXISTS idx_tickets_event_id        ON tickets(event_id);
+CREATE INDEX IF NOT EXISTS idx_tickets_owner_id        ON tickets(owner_id) WHERE owner_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_tickets_event_reserved  ON tickets(event_id, is_reserved);
+CREATE INDEX IF NOT EXISTS idx_tickets_owner_confirmed ON tickets(owner_id, is_confirmed) WHERE owner_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_event_zones_event_id    ON event_zones(event_id);
+CREATE INDEX IF NOT EXISTS idx_events_category         ON events(category);
+CREATE INDEX IF NOT EXISTS idx_events_date             ON events(date);
 
 INSERT INTO events (name, time, date, location, address, total_spaces, image_url, map_url, description, category) VALUES
 ('Hài kịch: Đảo Hoa Hậu', '20:00 - 22:30', '2026-11-20', 'Nhà hát Bến Thành', 'Số 6 Mạc Đĩnh Chi, Phường Bến Nghé, Quận 1, TP.HCM', 1000, 'https://cdn.tienphong.vn/images/9cdd1123343e89ccd66818037b692298c784abb547c4696f70edd89fbdf07bc28a95ab6a95af6ecc1370b5b790cab0219bd0bce37b89e4f5191445172449cae6e1ea4bd39c695733b513a3985dfeb63f/62bad85461b0a7d60fbd7e365a2cf6e9.jpg', 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?auto=format&fit=crop&w=1200&q=80', 'Vở kịch "Đảo Hoa Hậu" là vở kịch quy tụ nhiều nghệ sĩ hài nổi tiếng mang lại tiếng cười cho gia đình bạn trong dịp cuối tuần. Với các tình tiết bất ngờ và sâu sắc, vở kịch hứa hẹn sẽ mang đến một trải nghiệm đáng nhớ.', 'Nghệ thuật'),

@@ -2,18 +2,18 @@ name: Python CI
 
 on:
   push:
-    branches: [$default-branch]
+    branches: [main]
     paths:
       - "services/notification/**"
       - ".github/workflows/python-ci.yml"
   pull_request:
-    branches: [$default-branch]
+    branches: [main]
     paths:
       - "services/notification/**"
       - ".github/workflows/python-ci.yml"
 
 jobs:
-  lint:
+  notification:
     name: Notification Service
     runs-on: ubuntu-latest
     defaults:
@@ -31,11 +31,14 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install flake8
+          pip install ruff mypy pytest pytest-cov
           pip install -r requirements.txt
 
-      - name: Lint
-        run: flake8 . --max-line-length=120
+      - name: Lint (ruff)
+        run: ruff check . --line-length 120
 
-      - name: Syntax check
-        run: python -m py_compile main.py
+      - name: Type check (mypy)
+        run: mypy main.py --ignore-missing-imports
+
+      - name: Test with coverage
+        run: pytest tests/ -v --cov=. --cov-report=term-missing --cov-fail-under=60
