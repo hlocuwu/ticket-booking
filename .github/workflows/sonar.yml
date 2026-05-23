@@ -42,7 +42,7 @@ jobs:
           pytest tests/ --cov=. --cov-report=xml -q 2>/dev/null || true
 
       # --- JavaScript/Frontend coverage ---
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: 22
           cache: npm
