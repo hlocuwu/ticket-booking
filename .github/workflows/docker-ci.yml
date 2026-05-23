@@ -74,6 +74,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GHCR_TOKEN }}
 
       - name: Resolve build context
         id: ctx
