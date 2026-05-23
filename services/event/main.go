@@ -364,7 +364,9 @@ func setupRouter(db *sql.DB) *gin.Engine {
 			defer catRows.Close()
 			for catRows.Next() {
 				var cs CatStat
-				catRows.Scan(&cs.Category, &cs.Total, &cs.Sold)
+				if err := catRows.Scan(&cs.Category, &cs.Total, &cs.Sold); err != nil {
+					continue
+				}
 				categories = append(categories, cs)
 			}
 		}
