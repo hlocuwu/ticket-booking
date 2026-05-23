@@ -35,6 +35,7 @@ export default defineConfig([
       // These rules flag Date.now / Math.random inside callbacks, which is valid usage
       'react-hooks/purity': 'off',
       'react-hooks/immutability': 'off',
+      'react-hooks/set-state-in-effect': 'off',
     },
   },
   // Vitest globals for test files
