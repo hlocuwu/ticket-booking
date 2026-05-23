@@ -22,13 +22,11 @@ vi.mock('axios', async () => {
 describe('apiClient', () => {
   it('is created with the correct base URL from env', async () => {
     const axios = (await import('axios')).default;
-    // Import triggers the axios.create call
+    // Import triggers the axios.create calls
     await import('../services/apiClient');
-    expect(axios.create).toHaveBeenCalledWith(
-      expect.objectContaining({
-        headers: expect.objectContaining({ 'Content-Type': 'application/json' }),
-      })
-    );
+    expect(axios.create).toHaveBeenCalledWith(expect.objectContaining({ baseURL: '/api/auth' }));
+    expect(axios.create).toHaveBeenCalledWith(expect.objectContaining({ baseURL: '/api/events' }));
+    expect(axios.create).toHaveBeenCalledWith(expect.objectContaining({ baseURL: '/api/booking' }));
   });
 });
 

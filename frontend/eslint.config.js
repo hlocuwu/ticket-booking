@@ -23,7 +23,36 @@ export default defineConfig([
       },
     },
     rules: {
-      'no-unused-vars': ['error', { varsIgnorePattern: '^[A-Z_]' }],
+      'no-unused-vars': ['error', {
+        varsIgnorePattern: '^[A-Z_]',
+        argsIgnorePattern: '^[A-Z_]',
+        caughtErrorsIgnorePattern: '^_',
+      }],
+      // Allow empty catch blocks: catch (_) {}
+      'no-empty': ['error', { allowEmptyCatch: true }],
+      // Downgrade context export warning — common pattern for small apps
+      'react-refresh/only-export-components': 'warn',
+      // These rules flag Date.now / Math.random inside callbacks, which is valid usage
+      'react-hooks/purity': 'off',
+      'react-hooks/immutability': 'off',
+    },
+  },
+  // Vitest globals for test files
+  {
+    files: ['src/tests/**/*.{js,jsx}', '**/*.test.{js,jsx}'],
+    languageOptions: {
+      globals: {
+        ...globals.browser,
+        describe: 'readonly',
+        it: 'readonly',
+        expect: 'readonly',
+        vi: 'readonly',
+        beforeEach: 'readonly',
+        afterEach: 'readonly',
+        beforeAll: 'readonly',
+        afterAll: 'readonly',
+        test: 'readonly',
+      },
     },
   },
 ])
