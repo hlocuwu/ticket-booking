@@ -4,8 +4,6 @@ import { inventoryApi, bookingApi, queueApi } from '../services/apiClient';
 import { AuthContext } from '../context/AuthContext';
 import { CheckCircle, CreditCard, ChevronLeft, Loader2, Calendar, MapPin, Ticket, Clock } from 'lucide-react';
 import toast from 'react-hot-toast';
-import confetti from 'canvas-confetti';
-
 export default function Payment() {
   const { state } = useLocation();
   const navigate = useNavigate();
@@ -13,8 +11,6 @@ export default function Payment() {
 
   const [loading, setLoading] = useState(false);
   const [loadingMethod, setLoadingMethod] = useState(null); // 'momo' | 'mock'
-  const [success, setSuccess] = useState(false);
-
   // --- Shared countdown timer from EventDetails session ---
   const TOTAL_SECONDS = 300;
   const SESSION_KEY = state?.event ? `queueSession_${state.event.id}` : null;
@@ -36,7 +32,6 @@ export default function Payment() {
 
   // Countdown timer — shared with EventDetails via startTimestamp
   useEffect(() => {
-    if (success) return;
     if (timeLeft <= 0) {
       if (SESSION_KEY) sessionStorage.removeItem(SESSION_KEY);
       // Rời hàng đợi để người tiếp theo không bị treo

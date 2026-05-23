@@ -13,6 +13,17 @@ export default function PaymentCallback() {
   const { user } = useContext(AuthContext);
   const hasProcessed = useRef(false);
 
+  const triggerConfetti = () => {
+    const fire = (particleRatio, opts) => {
+      confetti({ origin: { y: 0.6 }, ...opts, particleCount: Math.floor(200 * particleRatio) });
+    };
+    fire(0.25, { spread: 26, startVelocity: 55 });
+    fire(0.20, { spread: 60 });
+    fire(0.35, { spread: 100, decay: 0.91, scalar: 0.8 });
+    fire(0.10, { spread: 120, startVelocity: 25, decay: 0.92, scalar: 1.2 });
+    fire(0.10, { spread: 120, startVelocity: 45 });
+  };
+
   useEffect(() => {
     if (!user || hasProcessed.current) return;
 
@@ -81,17 +92,6 @@ export default function PaymentCallback() {
     processPayment();
   }, [location, user, navigate]);
 
-  const triggerConfetti = () => {
-    const fire = (particleRatio, opts) => {
-      confetti({ origin: { y: 0.6 }, ...opts, particleCount: Math.floor(200 * particleRatio) });
-    };
-    fire(0.25, { spread: 26, startVelocity: 55 });
-    fire(0.20, { spread: 60 });
-    fire(0.35, { spread: 100, decay: 0.91, scalar: 0.8 });
-    fire(0.10, { spread: 120, startVelocity: 25, decay: 0.92, scalar: 1.2 });
-    fire(0.10, { spread: 120, startVelocity: 45 });
-  };
-
   if (status === 'processing') {
     return (
       <div className="min-h-[80vh] bg-[#1b1c21] flex flex-col items-center justify-center text-white">
@@ -121,14 +121,6 @@ export default function PaymentCallback() {
   }
 
   // Success
-  const pendingStr = sessionStorage.getItem('pendingPayment');
-  // It might be cleared already, but we can rely on our local variables if we lifted state up,
-  // or just parse again from URL if we wanted. Since we cleared it, let's keep the ticketCount 
-  // by parsing it before clearing, but wait, the component re-renders!
-  // It's better to store it in state if we want to display it.
-  // I will just read from sessionStorage or a fallback.
-  // Wait, I cleared it! So let's not clear it until unmount, or just rely on state.
-  // Actually, I can use a quick state for summary.
   const amountStr = new URLSearchParams(location.search).get('amount'); // MoMo returns amount too!
   const amountToDisplay = amountStr || 0;
   
