@@ -1,0 +1,58 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: booking
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "ticket-booking.labels" . | nindent 4 }}
+    app.kubernetes.io/component: booking
+spec:
+  replicas: {{ .Values.replicas.booking }}
+  selector:
+    matchLabels:
+      {{- include "ticket-booking.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: booking
+  template:
+    metadata:
+      labels:
+        {{- include "ticket-booking.labels" . | nindent 8 }}
+        app.kubernetes.io/component: booking
+    spec:
+      {{- include "ticket-booking.imagePullSecrets" . | nindent 6 }}
+      containers:
+        - name: booking
+          image: "{{ .Values.image.registry }}/{{ .Values.image.owner }}/ticket-booking-booking:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - containerPort: 8080
+          env:
+            - name: PORT
+              value: "8080"
+            - name: INVENTORY_URL
+              value: "http://inventory:8080"
+            - name: WAITINGROOM_URL
+              value: "http://waitingroom:8080"
+            - name: AUTH_URL
+              value: "http://auth:8080"
+            - name: PAYMENT_URL
+              value: "http://payment:8080"
+            - name: NOTIFICATION_URL
+              value: "http://notification:8086"
+            - name: REDIS_HOST
+              value: "{{ .Values.redis.host }}:{{ .Values.redis.port }}"
+            - name: APP_PUBLIC_URL
+              value: {{ .Values.app.publicUrl | quote }}
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}

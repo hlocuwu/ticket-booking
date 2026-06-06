@@ -1,0 +1,60 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: payment
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "ticket-booking.labels" . | nindent 4 }}
+    app.kubernetes.io/component: payment
+spec:
+  replicas: {{ .Values.replicas.payment }}
+  selector:
+    matchLabels:
+      {{- include "ticket-booking.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: payment
+  template:
+    metadata:
+      labels:
+        {{- include "ticket-booking.labels" . | nindent 8 }}
+        app.kubernetes.io/component: payment
+    spec:
+      {{- include "ticket-booking.imagePullSecrets" . | nindent 6 }}
+      containers:
+        - name: payment
+          image: "{{ .Values.image.registry }}/{{ .Values.image.owner }}/ticket-booking-payment:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - containerPort: 8080
+          env:
+            - name: PORT
+              value: "8080"
+            - name: PAYMENT_PUBLIC_URL
+              value: {{ .Values.payment.publicUrl | quote }}
+            - name: MOMO_PARTNER_CODE
+              value: {{ .Values.payment.momo.partnerCode | quote }}
+            - name: MOMO_ENDPOINT
+              value: {{ .Values.payment.momo.endpoint | quote }}
+            - name: MOMO_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: ticket-secrets
+                  key: momo-access-key
+            - name: MOMO_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: ticket-secrets
+                  key: momo-secret-key
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}

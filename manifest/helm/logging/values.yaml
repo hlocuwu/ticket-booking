@@ -1,0 +1,19 @@
+namespace: logging
+
+opensearch:
+  image: opensearchproject/opensearch:2.13.0
+  pullPolicy: IfNotPresent
+  replicas: 1
+  storage: 15Gi
+  javaOpts: "-Xms512m -Xmx512m"
+
+opensearchDashboards:
+  image: opensearchproject/opensearch-dashboards:2.13.0
+  pullPolicy: IfNotPresent
+  ingress:
+    className: nginx
+    host: opensearch.ticket.local
+
+fluentd:
+  image: fluent/fluentd-kubernetes-daemonset:v1.16-debian-opensearch-1
+  pullPolicy: IfNotPresent

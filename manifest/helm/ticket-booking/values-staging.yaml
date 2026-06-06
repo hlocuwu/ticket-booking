@@ -1,0 +1,11 @@
+image:
+  tag: staging
+
+app:
+  publicUrl: "https://staging.ticket-booking.example.com"
+
+payment:
+  publicUrl: "https://staging.ticket-booking.example.com/api/payment"
+
+ingress:
+  host: staging.ticket-booking.example.com

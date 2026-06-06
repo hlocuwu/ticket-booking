@@ -1,0 +1,7 @@
+opensearch:
+  storage: 50Gi
+  javaOpts: "-Xms1g -Xmx1g"
+
+opensearchDashboards:
+  ingress:
+    host: opensearch.staging.ticket-booking.example.com

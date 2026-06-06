@@ -1,0 +1,66 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: auth
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "ticket-booking.labels" . | nindent 4 }}
+    app.kubernetes.io/component: auth
+spec:
+  replicas: {{ .Values.replicas.auth }}
+  selector:
+    matchLabels:
+      {{- include "ticket-booking.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: auth
+  template:
+    metadata:
+      labels:
+        {{- include "ticket-booking.labels" . | nindent 8 }}
+        app.kubernetes.io/component: auth
+    spec:
+      {{- include "ticket-booking.imagePullSecrets" . | nindent 6 }}
+      containers:
+        - name: auth
+          image: "{{ .Values.image.registry }}/{{ .Values.image.owner }}/ticket-booking-auth:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - containerPort: 8080
+          env:
+            - name: PORT
+              value: "8080"
+            - name: DB_HOST
+              value: {{ .Values.db.host | quote }}
+            - name: DB_PORT
+              value: {{ .Values.db.port | quote }}
+            - name: DB_USER
+              value: {{ .Values.db.user | quote }}
+            - name: DB_NAME
+              value: {{ .Values.db.name | quote }}
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: ticket-secrets
+                  key: db-password
+            - name: REDIS_HOST
+              value: "{{ .Values.redis.host }}:{{ .Values.redis.port }}"
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: ticket-secrets
+                  key: jwt-secret
+            - name: NOTIFICATION_URL
+              value: "http://notification:8086"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
