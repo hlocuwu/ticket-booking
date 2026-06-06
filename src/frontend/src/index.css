@@ -1,0 +1,33 @@
+@import "tailwindcss";
+body { font-family: sans-serif; }
+
+/* Custom scrollbar — dark theme */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #1b1c21;
+}
+::-webkit-scrollbar-thumb {
+  background: #454756;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #5a5c70;
+}
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #454756 #1b1c21;
+}
+
+/* Hide default browser reveal password icon (Edge) */
+input::-ms-reveal,
+input::-ms-clear {
+  display: none;
+}
+input::-webkit-credentials-auto-fill-button {
+  visibility: hidden;
+  position: absolute;
+  right: 0;
+}

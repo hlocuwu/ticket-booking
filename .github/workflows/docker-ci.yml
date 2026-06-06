@@ -65,8 +65,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      packages: write       # push to GHCR
-      security-events: write # upload Trivy SARIF
+      packages: write
+      security-events: write
     strategy:
       fail-fast: false
       matrix:
