@@ -6,6 +6,7 @@ opensearch:
   replicas: 1
   storage: 15Gi
   javaOpts: "-Xms512m -Xmx512m"
+  adminPassword: "Admin@123456"
 
 opensearchDashboards:
   image: opensearchproject/opensearch-dashboards:2.13.0

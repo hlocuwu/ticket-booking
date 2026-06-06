@@ -32,6 +32,8 @@ spec:
           env:
             - name: OPENSEARCH_JAVA_OPTS
               value: {{ .Values.opensearch.javaOpts | quote }}
+            - name: OPENSEARCH_INITIAL_ADMIN_PASSWORD
+              value: {{ .Values.opensearch.adminPassword | quote }}
             - name: discovery.type
               value: single-node
             - name: plugins.security.disabled
