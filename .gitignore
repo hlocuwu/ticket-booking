@@ -18,11 +18,11 @@ htmlcov/
 *.egg-info/
 
 # Go binaries (compiled output — no extension on Linux)
-services/auth/auth
-services/booking/booking
-services/event/event
-services/inventory/inventory
-services/waitingroom/waitingroom
+src/services/auth/auth
+src/services/booking/booking
+src/services/event/event
+src/services/inventory/inventory
+src/services/waitingroom/waitingroom
 
 # Go test coverage
 coverage.out
