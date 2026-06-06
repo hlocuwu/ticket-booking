@@ -2,7 +2,7 @@ version: 2
 updates:
   # Go modules
   - package-ecosystem: gomod
-    directory: /services/auth
+    directory: /src/services/auth
     schedule:
       interval: weekly
       day: monday
@@ -12,7 +12,7 @@ updates:
     open-pull-requests-limit: 3
 
   - package-ecosystem: gomod
-    directory: /services/booking
+    directory: /src/services/booking
     schedule:
       interval: weekly
       day: monday
@@ -22,7 +22,7 @@ updates:
     open-pull-requests-limit: 3
 
   - package-ecosystem: gomod
-    directory: /services/event
+    directory: /src/services/event
     schedule:
       interval: weekly
       day: monday
@@ -32,7 +32,7 @@ updates:
     open-pull-requests-limit: 3
 
   - package-ecosystem: gomod
-    directory: /services/inventory
+    directory: /src/services/inventory
     schedule:
       interval: weekly
       day: monday
@@ -42,7 +42,7 @@ updates:
     open-pull-requests-limit: 3
 
   - package-ecosystem: gomod
-    directory: /services/waitingroom
+    directory: /src/services/waitingroom
     schedule:
       interval: weekly
       day: monday
@@ -53,7 +53,7 @@ updates:
 
   # npm — frontend
   - package-ecosystem: npm
-    directory: /frontend
+    directory: /src/frontend
     schedule:
       interval: weekly
       day: tuesday
@@ -69,7 +69,7 @@ updates:
 
   # npm — payment service
   - package-ecosystem: npm
-    directory: /services/payment
+    directory: /src/services/payment
     schedule:
       interval: weekly
       day: tuesday
@@ -80,7 +80,7 @@ updates:
 
   # pip — notification service
   - package-ecosystem: pip
-    directory: /services/notification
+    directory: /src/services/notification
     schedule:
       interval: weekly
       day: wednesday
