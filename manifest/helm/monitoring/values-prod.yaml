@@ -1,0 +1,8 @@
+prometheus:
+  retention: 30d
+  storage: 100Gi
+
+grafana:
+  storage: 20Gi
+  ingress:
+    host: grafana.ticket-booking.example.com

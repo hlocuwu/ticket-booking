@@ -1,0 +1,68 @@
+namespace: ticket-booking
+
+image:
+  registry: ghcr.io
+  owner: hlocuwu
+  tag: latest
+  pullPolicy: IfNotPresent
+  pullSecret: ghcr-pull-secret
+
+# External PostgreSQL (docker-compose on host for local, EC2 for staging/prod)
+# Set db.host at deploy time: --set db.host=<host-ip>
+db:
+  host: ""
+  port: "5432"
+  user: ticket_admin
+  name: ticket_db
+
+# External Redis — host only for waitingroom, host:port for auth/booking
+# Set redis.host at deploy time: --set redis.host=<host-ip>
+redis:
+  host: ""
+  port: "6379"
+
+app:
+  publicUrl: "http://ticket.local"
+
+payment:
+  publicUrl: "http://ticket.local/api/payment"
+  momo:
+    partnerCode: MOMO
+    endpoint: "https://test-payment.momo.vn/v2/gateway/api/create"
+
+smtp:
+  server: smtp.gmail.com
+  port: "587"
+
+ingress:
+  className: nginx
+  host: ticket.local
+
+# Default resource requests/limits for all services
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+replicas:
+  auth: 1
+  booking: 1
+  event: 1
+  inventory: 1
+  notification: 1
+  payment: 1
+  waitingroom: 1
+  frontend: 1
+
+# Secrets — do NOT set real values here; override at deploy time via --set or a gitignored secrets file
+secrets:
+  dbPassword: ""
+  jwtSecret: ""
+  smtpUsername: ""
+  smtpPassword: ""
+  senderEmail: ""
+  momoAccessKey: ""
+  momoSecretKey: ""

@@ -1,0 +1,29 @@
+image:
+  tag: latest
+
+app:
+  publicUrl: "https://ticket-booking.example.com"
+
+payment:
+  publicUrl: "https://ticket-booking.example.com/api/payment"
+
+ingress:
+  host: ticket-booking.example.com
+
+replicas:
+  auth: 2
+  booking: 2
+  event: 2
+  inventory: 2
+  notification: 1
+  payment: 1
+  waitingroom: 2
+  frontend: 2
+
+resources:
+  requests:
+    cpu: 200m
+    memory: 256Mi
+  limits:
+    cpu: 1000m
+    memory: 1Gi

@@ -1,0 +1,46 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: waitingroom
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "ticket-booking.labels" . | nindent 4 }}
+    app.kubernetes.io/component: waitingroom
+spec:
+  replicas: {{ .Values.replicas.waitingroom }}
+  selector:
+    matchLabels:
+      {{- include "ticket-booking.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: waitingroom
+  template:
+    metadata:
+      labels:
+        {{- include "ticket-booking.labels" . | nindent 8 }}
+        app.kubernetes.io/component: waitingroom
+    spec:
+      {{- include "ticket-booking.imagePullSecrets" . | nindent 6 }}
+      containers:
+        - name: waitingroom
+          image: "{{ .Values.image.registry }}/{{ .Values.image.owner }}/ticket-booking-waitingroom:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - containerPort: 8080
+          env:
+            - name: PORT
+              value: "8080"
+            - name: REDIS_HOST
+              value: {{ .Values.redis.host | quote }}
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
