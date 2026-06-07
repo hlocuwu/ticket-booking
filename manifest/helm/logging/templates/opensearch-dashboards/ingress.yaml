@@ -3,8 +3,18 @@ kind: Ingress
 metadata:
   name: opensearch-dashboards
   namespace: {{ .Values.namespace }}
+  {{- if .Values.tls.enabled }}
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+  {{- end }}
 spec:
   ingressClassName: {{ .Values.opensearchDashboards.ingress.className }}
+  {{- if .Values.tls.enabled }}
+  tls:
+    - hosts:
+        - {{ .Values.opensearchDashboards.ingress.host }}
+      secretName: {{ .Values.opensearchDashboards.ingress.host | replace "." "-" }}-tls
+  {{- end }}
   rules:
     - host: {{ .Values.opensearchDashboards.ingress.host }}
       http:

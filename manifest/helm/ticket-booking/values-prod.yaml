@@ -1,14 +1,19 @@
+# Production overrides — GKE + Cloud SQL + Memorystore
+# db.host, redis.host, tls.acmeEmail, externalSecrets.gcpProjectId, externalSecrets.clusterName
+# are injected at deploy time via ArgoCD helm parameters (not committed here)
+
 image:
   tag: latest
 
 app:
-  publicUrl: "https://ticket-booking.example.com"
+  publicUrl: "https://ticket.example.com"   # replace with actual domain
 
 payment:
-  publicUrl: "https://ticket-booking.example.com/api/payment"
+  publicUrl: "https://ticket.example.com/api/payment"
 
 ingress:
-  host: ticket-booking.example.com
+  className: nginx
+  host: ticket.example.com   # replace with actual domain
 
 replicas:
   auth: 2
@@ -16,7 +21,7 @@ replicas:
   event: 2
   inventory: 2
   notification: 1
-  payment: 1
+  payment: 2
   waitingroom: 2
   frontend: 2
 
@@ -26,4 +31,14 @@ resources:
     memory: 256Mi
   limits:
     cpu: 1000m
-    memory: 1Gi
+    memory: 512Mi
+
+tls:
+  enabled: true
+  acmeEmail: ""   # injected via ArgoCD parameter
+
+externalSecrets:
+  enabled: true
+  gcpProjectId: ""        # injected via ArgoCD parameter
+  clusterLocation: "asia-southeast1-a"
+  clusterName: ""         # injected via ArgoCD parameter

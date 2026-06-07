@@ -1,8 +1,12 @@
 prometheus:
-  retention: 30d
-  storage: 100Gi
+  retention: 15d
+  storage: 30Gi
 
 grafana:
-  storage: 20Gi
+  storage: 5Gi
   ingress:
-    host: grafana.ticket-booking.example.com
+    className: nginx
+    host: grafana.example.com   # replace with actual domain
+
+tls:
+  enabled: true

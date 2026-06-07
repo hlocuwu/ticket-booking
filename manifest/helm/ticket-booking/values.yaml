@@ -66,3 +66,15 @@ secrets:
   senderEmail: ""
   momoAccessKey: ""
   momoSecretKey: ""
+
+# TLS via cert-manager + Let's Encrypt — disabled locally, enabled on GKE prod
+tls:
+  enabled: false
+  acmeEmail: ""
+
+# External Secrets Operator — disabled locally (use values.secrets above), enabled on GKE
+externalSecrets:
+  enabled: false
+  gcpProjectId: ""
+  clusterLocation: "asia-southeast1-a"
+  clusterName: ""

@@ -3,8 +3,18 @@ kind: Ingress
 metadata:
   name: grafana
   namespace: {{ .Values.namespace }}
+  {{- if .Values.tls.enabled }}
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+  {{- end }}
 spec:
   ingressClassName: {{ .Values.grafana.ingress.className }}
+  {{- if .Values.tls.enabled }}
+  tls:
+    - hosts:
+        - {{ .Values.grafana.ingress.host }}
+      secretName: {{ .Values.grafana.ingress.host | replace "." "-" }}-tls
+  {{- end }}
   rules:
     - host: {{ .Values.grafana.ingress.host }}
       http:

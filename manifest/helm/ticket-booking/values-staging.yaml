@@ -1,11 +1,53 @@
+# Staging overrides — same GKE cluster, namespace: ticket-booking-staging
+# db.host, redis.host, externalSecrets.* injected via ArgoCD helm parameters (same as prod)
+
+namespace: ticket-booking-staging
+
 image:
   tag: staging
 
 app:
-  publicUrl: "https://staging.ticket-booking.example.com"
+  publicUrl: "https://staging.example.com"   # replace with actual domain
 
 payment:
-  publicUrl: "https://staging.ticket-booking.example.com/api/payment"
+  publicUrl: "https://staging.example.com/api/payment"
+
+# Staging DB — separate database within same Cloud SQL instance
+db:
+  name: ticket_db_staging
 
 ingress:
-  host: staging.ticket-booking.example.com
+  className: nginx
+  host: staging.example.com   # replace with actual domain
+
+# Lower replicas — staging doesn't need HA
+replicas:
+  auth: 1
+  booking: 1
+  event: 1
+  inventory: 1
+  notification: 1
+  payment: 1
+  waitingroom: 1
+  frontend: 1
+
+# Lower resources to not starve prod
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 256Mi
+
+# TLS — same cert-manager as prod
+tls:
+  enabled: true
+  acmeEmail: ""   # injected via ArgoCD parameter
+
+# External Secrets — same GCP Secret Manager, same secrets as prod
+externalSecrets:
+  enabled: true
+  gcpProjectId: ""        # injected via ArgoCD parameter
+  clusterLocation: "asia-southeast1-a"
+  clusterName: ""         # injected via ArgoCD parameter

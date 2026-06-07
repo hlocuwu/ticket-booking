@@ -1,0 +1,16 @@
+project_id      = "your-gcp-project-id"
+region          = "asia-southeast1"
+zone            = "asia-southeast1-a"
+
+# Sensitive — set via environment variables instead:
+# export TF_VAR_db_password="..."
+# export TF_VAR_jwt_secret="..."
+# export TF_VAR_ghcr_token="..."
+db_password     = ""
+jwt_secret      = ""
+smtp_username   = ""
+smtp_password   = ""
+sender_email    = ""
+momo_access_key = ""
+momo_secret_key = ""
+ghcr_token      = ""
