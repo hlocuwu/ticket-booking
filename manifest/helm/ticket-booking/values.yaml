@@ -75,6 +75,7 @@ tls:
 # External Secrets Operator — disabled locally (use values.secrets above), enabled on GKE
 externalSecrets:
   enabled: false
+  createClusterStore: false
   gcpProjectId: ""
   clusterLocation: "asia-southeast1-a"
   clusterName: ""
