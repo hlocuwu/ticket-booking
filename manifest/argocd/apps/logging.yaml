@@ -14,6 +14,11 @@ spec:
     helm:
       valueFiles:
         - values.yaml
+      parameters:
+        - name: opensearchDashboards.ingress.host
+          value: opensearch.flashticket.site
+        - name: tls.enabled
+          value: "true"
   destination:
     server: https://kubernetes.default.svc
     namespace: logging
