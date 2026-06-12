@@ -45,32 +45,43 @@ else
   ok "ArgoCD installed"
 fi
 
-# ── 3. Bootstrap App of Apps ──────────────────────────────────────────────────
+# ── 3. ArgoCD insecure mode (let ingress-nginx handle TLS) ────────────────────
+info "Configuring ArgoCD server for ingress TLS termination..."
+kubectl patch deployment argocd-server -n "$ARGOCD_NS" \
+  --type json \
+  -p '[{"op":"add","path":"/spec/template/spec/containers/0/args/-","value":"--insecure"}]' \
+  2>/dev/null || true
+kubectl rollout status deployment/argocd-server -n "$ARGOCD_NS" --timeout=120s
+ok "ArgoCD insecure mode enabled"
+
+# ── 4. Bootstrap App of Apps ──────────────────────────────────────────────────
 info "Applying ArgoCD root-app (App of Apps)..."
 kubectl apply -f "$REPO_ROOT/manifest/argocd/root-app.yaml"
-ok "root-app applied — ArgoCD will sync: cert-manager, external-secrets, ingress-nginx, monitoring, logging, ticket-booking"
+ok "root-app applied"
 
-# ── 4. Print access info ──────────────────────────────────────────────────────
+# ── 5. Apply ArgoCD ingress ───────────────────────────────────────────────────
+info "Applying ArgoCD ingress..."
+kubectl apply -f "$REPO_ROOT/manifest/argocd/argocd-ingress.yaml"
+ok "ArgoCD ingress applied — https://argocd.flashticket.site"
+
+# ── 6. Print access info ──────────────────────────────────────────────────────
 ARGOCD_PASS=$(kubectl -n "$ARGOCD_NS" get secret argocd-initial-admin-secret \
   -o jsonpath="{.data.password}" | base64 -d)
 
 echo ""
 echo "════════════════════════════════════════════════════════════"
-echo "  ArgoCD UI  : kubectl port-forward svc/argocd-server -n argocd 8080:443"
-echo "               then open https://localhost:8080"
-echo "  Username   : admin"
-echo "  Password   : ${ARGOCD_PASS}"
+echo "  ArgoCD    : https://argocd.flashticket.site"
+echo "  Grafana   : https://grafana.flashticket.site"
+echo "  OpenSearch: https://opensearch.flashticket.site"
+echo "  Production: https://flashticket.site"
+echo "  Staging   : https://staging.flashticket.site"
 echo ""
-echo "  Next steps:"
-echo "  1. Wait for ingress-nginx to get an external IP:"
-echo "     kubectl get svc -n ingress-nginx ingress-nginx-controller"
-echo "  2. Add the external IP as an A record in Cloudflare for your domain"
-echo "  3. Update ArgoCD helm parameters with real values:"
-echo "     - externalSecrets.gcpProjectId"
-echo "     - externalSecrets.clusterName"
-echo "     - tls.acmeEmail"
-echo "     - db.host (from: terraform output cloudsql_private_ip)"
-echo "     - redis.host (from: terraform output redis_host)"
+echo "  ArgoCD credentials:"
+echo "  Username  : admin"
+echo "  Password  : ${ARGOCD_PASS}"
+echo ""
+echo "  Note: DNS must point *.flashticket.site to ingress-nginx external IP"
+echo "  Run: kubectl get svc -n ingress-nginx ingress-nginx-controller"
 echo "════════════════════════════════════════════════════════════"
 echo ""
 info "Run 'kubectl get applications -n argocd' to watch sync status"

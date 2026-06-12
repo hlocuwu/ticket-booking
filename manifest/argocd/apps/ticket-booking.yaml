@@ -14,6 +14,25 @@ spec:
     helm:
       valueFiles:
         - values.yaml
+      parameters:
+        - name: db.host
+          value: "10.81.97.3"
+        - name: redis.host
+          value: "10.81.96.3"
+        - name: externalSecrets.enabled
+          value: "true"
+        - name: externalSecrets.createClusterStore
+          value: "true"
+        - name: externalSecrets.gcpProjectId
+          value: "ticket-booking-cloud"
+        - name: externalSecrets.clusterName
+          value: "ticket-booking-cloud-gke"
+        - name: tls.enabled
+          value: "true"
+        - name: tls.acmeEmail
+          value: "nhloc08@gmail.com"
+        - name: ingress.host
+          value: "flashticket.site"
   destination:
     server: https://kubernetes.default.svc
     namespace: ticket-booking
