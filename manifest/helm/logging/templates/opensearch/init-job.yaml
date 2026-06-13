@@ -9,16 +9,17 @@ data:
     set -e
     OS_URL="http://opensearch.{{ .Values.namespace }}.svc.cluster.local:9200"
     OSD_URL="http://opensearch-dashboards.{{ .Values.namespace }}.svc.cluster.local:5601"
+    OS_CRED="admin:${OS_PASS:-admin}"
 
     echo "Waiting for OpenSearch..."
-    until curl -sf -u admin:admin "$OS_URL/_cluster/health" > /dev/null; do sleep 5; done
+    until curl -sf -u "$OS_CRED" "$OS_URL/_cluster/health" > /dev/null; do sleep 5; done
 
     echo "Waiting for OpenSearch Dashboards..."
     until curl -sf "$OSD_URL/api/status" > /dev/null 2>&1; do sleep 5; done
     sleep 10
 
     echo "Creating index template for parsed fields..."
-    curl -sf -u admin:admin -X PUT "$OS_URL/_index_template/ticket-booking-logs" \
+    curl -sf -u "$OS_CRED" -X PUT "$OS_URL/_index_template/ticket-booking-logs" \
       -H 'Content-Type: application/json' -d '{
         "index_patterns": ["ticket-booking-logs-*"],
         "template": {
@@ -54,7 +55,7 @@ data:
       -F 'file=@/scripts/dashboard.ndjson' || true
 
     echo "Creating cicd-metrics index template..."
-    curl -sf -u admin:admin -X PUT "$OS_URL/_index_template/cicd-metrics" \
+    curl -sf -u "$OS_CRED" -X PUT "$OS_URL/_index_template/cicd-metrics" \
       -H 'Content-Type: application/json' -d '{
         "index_patterns": ["cicd-metrics"],
         "template": {
@@ -132,6 +133,9 @@ spec:
         - name: init
           image: curlimages/curl:8.6.0
           command: ["/bin/sh", "/scripts/init.sh"]
+          env:
+            - name: OS_PASS
+              value: {{ .Values.opensearch.adminPassword | quote }}
           volumeMounts:
             - name: scripts
               mountPath: /scripts
