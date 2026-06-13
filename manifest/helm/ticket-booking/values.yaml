@@ -3,7 +3,7 @@ namespace: ticket-booking
 image:
   registry: ghcr.io
   owner: hlocuwu
-  tag: main
+  tag: v0.1.0
   pullPolicy: IfNotPresent
   pullSecret: ghcr-pull-secret
 
