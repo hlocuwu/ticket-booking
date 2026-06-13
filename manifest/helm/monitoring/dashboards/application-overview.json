@@ -1,0 +1,247 @@
+{
+  "title": "Application Overview",
+  "uid": "app-overview",
+  "schemaVersion": 38,
+  "version": 1,
+  "refresh": "30s",
+  "time": { "from": "now-1h", "to": "now" },
+  "templating": {
+    "list": [
+      {
+        "name": "datasource",
+        "label": "Datasource",
+        "type": "datasource",
+        "pluginId": "prometheus",
+        "hide": 0
+      },
+      {
+        "name": "namespace",
+        "label": "Namespace",
+        "type": "query",
+        "datasource": { "type": "prometheus", "uid": "${datasource}" },
+        "query": "label_values(container_cpu_usage_seconds_total{namespace=~\"ticket-booking.*\"}, namespace)",
+        "refresh": 2,
+        "multi": false,
+        "includeAll": false,
+        "sort": 1,
+        "current": { "text": "ticket-booking", "value": "ticket-booking" }
+      },
+      {
+        "name": "pod",
+        "label": "Pod",
+        "type": "query",
+        "datasource": { "type": "prometheus", "uid": "${datasource}" },
+        "query": "label_values(container_cpu_usage_seconds_total{namespace=\"$namespace\", container!=\"\", container!=\"POD\"}, pod)",
+        "refresh": 2,
+        "multi": true,
+        "includeAll": true,
+        "allValue": ".*",
+        "sort": 1
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Pods Running",
+      "type": "stat",
+      "gridPos": { "x": 0, "y": 0, "w": 4, "h": 4 },
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": { "mode": "thresholds" },
+          "thresholds": { "mode": "absolute", "steps": [
+            { "color": "red", "value": null },
+            { "color": "green", "value": 1 }
+          ]}
+        }
+      },
+      "targets": [{
+        "expr": "count(count by (pod) (container_cpu_usage_seconds_total{namespace=\"$namespace\", container!=\"\", container!=\"POD\"}))",
+        "legendFormat": "Pods"
+      }]
+    },
+    {
+      "id": 2,
+      "title": "Replicas Available",
+      "type": "stat",
+      "gridPos": { "x": 4, "y": 0, "w": 4, "h": 4 },
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": { "mode": "absolute", "steps": [
+            { "color": "red", "value": null },
+            { "color": "green", "value": 1 }
+          ]}
+        }
+      },
+      "targets": [{
+        "expr": "sum(kube_deployment_status_replicas_available{namespace=\"$namespace\"})",
+        "legendFormat": "Available"
+      }]
+    },
+    {
+      "id": 3,
+      "title": "Replicas Desired",
+      "type": "stat",
+      "gridPos": { "x": 8, "y": 0, "w": 4, "h": 4 },
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "blue", "value": null }]}
+        }
+      },
+      "targets": [{
+        "expr": "sum(kube_deployment_spec_replicas{namespace=\"$namespace\"})",
+        "legendFormat": "Desired"
+      }]
+    },
+    {
+      "id": 4,
+      "title": "Total CPU (cores)",
+      "type": "stat",
+      "gridPos": { "x": 12, "y": 0, "w": 4, "h": 4 },
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short", "decimals": 3,
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }]}
+        }
+      },
+      "targets": [{
+        "expr": "sum(rate(container_cpu_usage_seconds_total{namespace=\"$namespace\", container!=\"\", container!=\"POD\"}[5m]))",
+        "legendFormat": "CPU cores"
+      }]
+    },
+    {
+      "id": 5,
+      "title": "Total Memory",
+      "type": "stat",
+      "gridPos": { "x": 16, "y": 0, "w": 4, "h": 4 },
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }]}
+        }
+      },
+      "targets": [{
+        "expr": "sum(container_memory_working_set_bytes{namespace=\"$namespace\", container!=\"\", container!=\"POD\"})",
+        "legendFormat": "Memory"
+      }]
+    },
+    {
+      "id": 6,
+      "title": "Deployment Health",
+      "type": "table",
+      "gridPos": { "x": 0, "y": 4, "w": 12, "h": 6 },
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": {
+        "defaults": { "unit": "short" },
+        "overrides": [{
+          "matcher": { "id": "byName", "options": "Available" },
+          "properties": [
+            { "id": "custom.displayMode", "value": "color-background" },
+            { "id": "thresholds", "value": { "mode": "absolute", "steps": [
+              { "color": "red", "value": null }, { "color": "green", "value": 1 }
+            ]}}
+          ]
+        }]
+      },
+      "transformations": [
+        { "id": "merge", "options": {} },
+        { "id": "organize", "options": {
+          "renameByName": {
+            "deployment": "Service",
+            "Value #A": "Desired",
+            "Value #B": "Available",
+            "Value #C": "Ready"
+          }
+        }}
+      ],
+      "targets": [
+        {
+          "expr": "kube_deployment_spec_replicas{namespace=\"$namespace\"}",
+          "legendFormat": "{{deployment}}",
+          "refId": "A",
+          "instant": true
+        },
+        {
+          "expr": "kube_deployment_status_replicas_available{namespace=\"$namespace\"}",
+          "legendFormat": "{{deployment}}",
+          "refId": "B",
+          "instant": true
+        },
+        {
+          "expr": "kube_deployment_status_replicas_ready{namespace=\"$namespace\"}",
+          "legendFormat": "{{deployment}}",
+          "refId": "C",
+          "instant": true
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "title": "CPU Usage per Pod",
+      "type": "timeseries",
+      "gridPos": { "x": 0, "y": 10, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": { "defaults": { "unit": "short" } },
+      "targets": [{
+        "expr": "sum by (pod) (rate(container_cpu_usage_seconds_total{namespace=\"$namespace\", pod=~\"$pod\", container!=\"\", container!=\"POD\"}[5m]))",
+        "legendFormat": "{{pod}}"
+      }]
+    },
+    {
+      "id": 8,
+      "title": "Memory Usage per Pod",
+      "type": "timeseries",
+      "gridPos": { "x": 12, "y": 10, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": { "defaults": { "unit": "bytes" } },
+      "targets": [{
+        "expr": "sum by (pod) (container_memory_working_set_bytes{namespace=\"$namespace\", pod=~\"$pod\", container!=\"\", container!=\"POD\"})",
+        "legendFormat": "{{pod}}"
+      }]
+    },
+    {
+      "id": 9,
+      "title": "CPU - Prod vs Staging",
+      "type": "timeseries",
+      "gridPos": { "x": 0, "y": 18, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": { "defaults": { "unit": "short" } },
+      "targets": [
+        {
+          "expr": "sum(rate(container_cpu_usage_seconds_total{namespace=\"ticket-booking\", container!=\"\", container!=\"POD\"}[5m]))",
+          "legendFormat": "production"
+        },
+        {
+          "expr": "sum(rate(container_cpu_usage_seconds_total{namespace=\"ticket-booking-staging\", container!=\"\", container!=\"POD\"}[5m]))",
+          "legendFormat": "staging"
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "title": "Memory - Prod vs Staging",
+      "type": "timeseries",
+      "gridPos": { "x": 12, "y": 18, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": { "defaults": { "unit": "bytes" } },
+      "targets": [
+        {
+          "expr": "sum(container_memory_working_set_bytes{namespace=\"ticket-booking\", container!=\"\", container!=\"POD\"})",
+          "legendFormat": "production"
+        },
+        {
+          "expr": "sum(container_memory_working_set_bytes{namespace=\"ticket-booking-staging\", container!=\"\", container!=\"POD\"})",
+          "legendFormat": "staging"
+        }
+      ]
+    }
+  ]
+}
