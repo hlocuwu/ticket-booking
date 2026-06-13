@@ -1,0 +1,487 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboards
+  namespace: {{ .Values.namespace }}
+data:
+  node-overview.json: |
+    {
+      "title": "Node Overview",
+      "uid": "node-overview",
+      "schemaVersion": 38,
+      "version": 1,
+      "refresh": "30s",
+      "time": { "from": "now-1h", "to": "now" },
+      "templating": {
+        "list": [
+          {
+            "name": "datasource",
+            "label": "Datasource",
+            "type": "datasource",
+            "pluginId": "prometheus",
+            "hide": 0
+          },
+          {
+            "name": "node",
+            "label": "Node",
+            "type": "query",
+            "datasource": { "type": "prometheus", "uid": "${datasource}" },
+            "query": "label_values(node_uname_info, nodename)",
+            "refresh": 2,
+            "multi": false,
+            "includeAll": true,
+            "allValue": ".*",
+            "sort": 1
+          },
+          {
+            "name": "instance",
+            "label": "Instance",
+            "type": "query",
+            "datasource": { "type": "prometheus", "uid": "${datasource}" },
+            "query": "label_values(node_uname_info{nodename=~\"$node\"}, instance)",
+            "refresh": 2,
+            "hide": 2
+          }
+        ]
+      },
+      "panels": [
+        {
+          "id": 1,
+          "title": "CPU Usage (%)",
+          "type": "timeseries",
+          "gridPos": { "x": 0, "y": 0, "w": 12, "h": 8 },
+          "datasource": { "type": "prometheus", "uid": "${datasource}" },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percent", "min": 0, "max": 100,
+              "color": { "mode": "palette-classic" },
+              "thresholds": { "mode": "absolute", "steps": [
+                { "color": "green", "value": null },
+                { "color": "yellow", "value": 70 },
+                { "color": "red", "value": 90 }
+              ]}
+            }
+          },
+          "targets": [{
+            "expr": "100 - (avg by (instance) (rate(node_cpu_seconds_total{mode=\"idle\", instance=~\"$instance\"}[5m])) * 100)",
+            "legendFormat": "{{instance}}"
+          }]
+        },
+        {
+          "id": 2,
+          "title": "Memory Usage (%)",
+          "type": "timeseries",
+          "gridPos": { "x": 12, "y": 0, "w": 12, "h": 8 },
+          "datasource": { "type": "prometheus", "uid": "${datasource}" },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percent", "min": 0, "max": 100,
+              "color": { "mode": "palette-classic" },
+              "thresholds": { "mode": "absolute", "steps": [
+                { "color": "green", "value": null },
+                { "color": "yellow", "value": 70 },
+                { "color": "red", "value": 90 }
+              ]}
+            }
+          },
+          "targets": [{
+            "expr": "(1 - node_memory_MemAvailable_bytes{instance=~\"$instance\"} / node_memory_MemTotal_bytes{instance=~\"$instance\"}) * 100",
+            "legendFormat": "{{instance}}"
+          }]
+        },
+        {
+          "id": 3,
+          "title": "CPU (Current)",
+          "type": "gauge",
+          "gridPos": { "x": 0, "y": 8, "w": 6, "h": 4 },
+          "datasource": { "type": "prometheus", "uid": "${datasource}" },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percent", "min": 0, "max": 100,
+              "thresholds": { "mode": "absolute", "steps": [
+                { "color": "green", "value": null },
+                { "color": "yellow", "value": 70 },
+                { "color": "red", "value": 90 }
+              ]}
+            }
+          },
+          "targets": [{
+            "expr": "avg(100 - (avg by (instance) (rate(node_cpu_seconds_total{mode=\"idle\", instance=~\"$instance\"}[5m])) * 100))",
+            "legendFormat": "CPU %"
+          }]
+        },
+        {
+          "id": 4,
+          "title": "Memory (Current)",
+          "type": "gauge",
+          "gridPos": { "x": 6, "y": 8, "w": 6, "h": 4 },
+          "datasource": { "type": "prometheus", "uid": "${datasource}" },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percent", "min": 0, "max": 100,
+              "thresholds": { "mode": "absolute", "steps": [
+                { "color": "green", "value": null },
+                { "color": "yellow", "value": 70 },
+                { "color": "red", "value": 90 }
+              ]}
+            }
+          },
+          "targets": [{
+            "expr": "avg((1 - node_memory_MemAvailable_bytes{instance=~\"$instance\"} / node_memory_MemTotal_bytes{instance=~\"$instance\"}) * 100)",
+            "legendFormat": "Memory %"
+          }]
+        },
+        {
+          "id": 5,
+          "title": "Disk Usage / (Current)",
+          "type": "gauge",
+          "gridPos": { "x": 12, "y": 8, "w": 6, "h": 4 },
+          "datasource": { "type": "prometheus", "uid": "${datasource}" },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percent", "min": 0, "max": 100,
+              "thresholds": { "mode": "absolute", "steps": [
+                { "color": "green", "value": null },
+                { "color": "yellow", "value": 70 },
+                { "color": "red", "value": 90 }
+              ]}
+            }
+          },
+          "targets": [{
+            "expr": "avg((1 - node_filesystem_avail_bytes{instance=~\"$instance\", mountpoint=\"/\", fstype!~\"tmpfs|overlay\"} / node_filesystem_size_bytes{instance=~\"$instance\", mountpoint=\"/\", fstype!~\"tmpfs|overlay\"}) * 100)",
+            "legendFormat": "Disk %"
+          }]
+        },
+        {
+          "id": 6,
+          "title": "Running Containers",
+          "type": "stat",
+          "gridPos": { "x": 18, "y": 8, "w": 6, "h": 4 },
+          "datasource": { "type": "prometheus", "uid": "${datasource}" },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }]}
+            }
+          },
+          "targets": [{
+            "expr": "count(rate(container_cpu_usage_seconds_total{kubernetes_io_hostname=~\"$node\", container!=\"\", container!=\"POD\"}[5m]))",
+            "legendFormat": "Containers"
+          }]
+        },
+        {
+          "id": 7,
+          "title": "Network Receive (bytes/s)",
+          "type": "timeseries",
+          "gridPos": { "x": 0, "y": 12, "w": 12, "h": 8 },
+          "datasource": { "type": "prometheus", "uid": "${datasource}" },
+          "fieldConfig": { "defaults": { "unit": "Bps" } },
+          "targets": [{
+            "expr": "sum by (instance) (rate(node_network_receive_bytes_total{instance=~\"$instance\", device!~\"lo|veth.*|docker.*\"}[5m]))",
+            "legendFormat": "{{instance}} rx"
+          }]
+        },
+        {
+          "id": 8,
+          "title": "Network Transmit (bytes/s)",
+          "type": "timeseries",
+          "gridPos": { "x": 12, "y": 12, "w": 12, "h": 8 },
+          "datasource": { "type": "prometheus", "uid": "${datasource}" },
+          "fieldConfig": { "defaults": { "unit": "Bps" } },
+          "targets": [{
+            "expr": "sum by (instance) (rate(node_network_transmit_bytes_total{instance=~\"$instance\", device!~\"lo|veth.*|docker.*\"}[5m]))",
+            "legendFormat": "{{instance}} tx"
+          }]
+        },
+        {
+          "id": 9,
+          "title": "Memory Available vs Used",
+          "type": "timeseries",
+          "gridPos": { "x": 0, "y": 20, "w": 12, "h": 8 },
+          "datasource": { "type": "prometheus", "uid": "${datasource}" },
+          "fieldConfig": { "defaults": { "unit": "bytes" } },
+          "targets": [
+            {
+              "expr": "node_memory_MemTotal_bytes{instance=~\"$instance\"}",
+              "legendFormat": "{{instance}} total"
+            },
+            {
+              "expr": "node_memory_MemTotal_bytes{instance=~\"$instance\"} - node_memory_MemAvailable_bytes{instance=~\"$instance\"}",
+              "legendFormat": "{{instance}} used"
+            },
+            {
+              "expr": "node_memory_MemAvailable_bytes{instance=~\"$instance\"}",
+              "legendFormat": "{{instance}} available"
+            }
+          ]
+        },
+        {
+          "id": 10,
+          "title": "Disk I/O (bytes/s)",
+          "type": "timeseries",
+          "gridPos": { "x": 12, "y": 20, "w": 12, "h": 8 },
+          "datasource": { "type": "prometheus", "uid": "${datasource}" },
+          "fieldConfig": { "defaults": { "unit": "Bps" } },
+          "targets": [
+            {
+              "expr": "sum by (instance) (rate(node_disk_read_bytes_total{instance=~\"$instance\"}[5m]))",
+              "legendFormat": "{{instance}} read"
+            },
+            {
+              "expr": "sum by (instance) (rate(node_disk_written_bytes_total{instance=~\"$instance\"}[5m]))",
+              "legendFormat": "{{instance}} write"
+            }
+          ]
+        }
+      ]
+    }
+
+  application-overview.json: |
+    {
+      "title": "Application Overview",
+      "uid": "app-overview",
+      "schemaVersion": 38,
+      "version": 1,
+      "refresh": "30s",
+      "time": { "from": "now-1h", "to": "now" },
+      "templating": {
+        "list": [
+          {
+            "name": "datasource",
+            "label": "Datasource",
+            "type": "datasource",
+            "pluginId": "prometheus",
+            "hide": 0
+          },
+          {
+            "name": "namespace",
+            "label": "Namespace",
+            "type": "query",
+            "datasource": { "type": "prometheus", "uid": "${datasource}" },
+            "query": "label_values(container_cpu_usage_seconds_total{namespace=~\"ticket-booking.*\"}, namespace)",
+            "refresh": 2,
+            "multi": false,
+            "includeAll": false,
+            "sort": 1,
+            "current": { "text": "ticket-booking", "value": "ticket-booking" }
+          },
+          {
+            "name": "pod",
+            "label": "Pod",
+            "type": "query",
+            "datasource": { "type": "prometheus", "uid": "${datasource}" },
+            "query": "label_values(container_cpu_usage_seconds_total{namespace=\"$namespace\", container!=\"\", container!=\"POD\"}, pod)",
+            "refresh": 2,
+            "multi": true,
+            "includeAll": true,
+            "allValue": ".*",
+            "sort": 1
+          }
+        ]
+      },
+      "panels": [
+        {
+          "id": 1,
+          "title": "Pods Running",
+          "type": "stat",
+          "gridPos": { "x": 0, "y": 0, "w": 4, "h": 4 },
+          "datasource": { "type": "prometheus", "uid": "${datasource}" },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "color": { "mode": "thresholds" },
+              "thresholds": { "mode": "absolute", "steps": [
+                { "color": "red", "value": null },
+                { "color": "green", "value": 1 }
+              ]}
+            }
+          },
+          "targets": [{
+            "expr": "count(count by (pod) (container_cpu_usage_seconds_total{namespace=\"$namespace\", container!=\"\", container!=\"POD\"}))",
+            "legendFormat": "Pods"
+          }]
+        },
+        {
+          "id": 2,
+          "title": "Deployments Available",
+          "type": "stat",
+          "gridPos": { "x": 4, "y": 0, "w": 4, "h": 4 },
+          "datasource": { "type": "prometheus", "uid": "${datasource}" },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "thresholds": { "mode": "absolute", "steps": [
+                { "color": "red", "value": null },
+                { "color": "green", "value": 1 }
+              ]}
+            }
+          },
+          "targets": [{
+            "expr": "sum(kube_deployment_status_replicas_available{namespace=\"$namespace\"})",
+            "legendFormat": "Available replicas"
+          }]
+        },
+        {
+          "id": 3,
+          "title": "Deployments Desired",
+          "type": "stat",
+          "gridPos": { "x": 8, "y": 0, "w": 4, "h": 4 },
+          "datasource": { "type": "prometheus", "uid": "${datasource}" },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "thresholds": { "mode": "absolute", "steps": [{ "color": "blue", "value": null }]}
+            }
+          },
+          "targets": [{
+            "expr": "sum(kube_deployment_spec_replicas{namespace=\"$namespace\"})",
+            "legendFormat": "Desired replicas"
+          }]
+        },
+        {
+          "id": 4,
+          "title": "Total CPU Usage (cores)",
+          "type": "stat",
+          "gridPos": { "x": 12, "y": 0, "w": 4, "h": 4 },
+          "datasource": { "type": "prometheus", "uid": "${datasource}" },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "decimals": 3,
+              "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }]}
+            }
+          },
+          "targets": [{
+            "expr": "sum(rate(container_cpu_usage_seconds_total{namespace=\"$namespace\", container!=\"\", container!=\"POD\"}[5m]))",
+            "legendFormat": "CPU cores"
+          }]
+        },
+        {
+          "id": 5,
+          "title": "Total Memory Usage",
+          "type": "stat",
+          "gridPos": { "x": 16, "y": 0, "w": 4, "h": 4 },
+          "datasource": { "type": "prometheus", "uid": "${datasource}" },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "bytes",
+              "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }]}
+            }
+          },
+          "targets": [{
+            "expr": "sum(container_memory_working_set_bytes{namespace=\"$namespace\", container!=\"\", container!=\"POD\"})",
+            "legendFormat": "Memory"
+          }]
+        },
+        {
+          "id": 6,
+          "title": "Deployment Health",
+          "type": "table",
+          "gridPos": { "x": 0, "y": 4, "w": 12, "h": 6 },
+          "datasource": { "type": "prometheus", "uid": "${datasource}" },
+          "fieldConfig": {
+            "defaults": { "unit": "short" },
+            "overrides": [
+              {
+                "matcher": { "id": "byName", "options": "Available" },
+                "properties": [{ "id": "custom.displayMode", "value": "color-background" },
+                  { "id": "thresholds", "value": { "mode": "absolute", "steps": [
+                    { "color": "red", "value": null }, { "color": "green", "value": 1 }
+                  ]}}]
+              }
+            ]
+          },
+          "transformations": [
+            { "id": "merge", "options": {} },
+            { "id": "organize", "options": {
+              "renameByName": {
+                "deployment": "Service",
+                "Value #kube_deployment_spec_replicas": "Desired",
+                "Value #kube_deployment_status_replicas_available": "Available",
+                "Value #kube_deployment_status_replicas_ready": "Ready"
+              }
+            }}
+          ],
+          "targets": [
+            {
+              "expr": "kube_deployment_spec_replicas{namespace=\"$namespace\"}",
+              "legendFormat": "{{deployment}}",
+              "refId": "kube_deployment_spec_replicas",
+              "instant": true
+            },
+            {
+              "expr": "kube_deployment_status_replicas_available{namespace=\"$namespace\"}",
+              "legendFormat": "{{deployment}}",
+              "refId": "kube_deployment_status_replicas_available",
+              "instant": true
+            },
+            {
+              "expr": "kube_deployment_status_replicas_ready{namespace=\"$namespace\"}",
+              "legendFormat": "{{deployment}}",
+              "refId": "kube_deployment_status_replicas_ready",
+              "instant": true
+            }
+          ]
+        },
+        {
+          "id": 7,
+          "title": "CPU Usage per Service",
+          "type": "timeseries",
+          "gridPos": { "x": 0, "y": 10, "w": 12, "h": 8 },
+          "datasource": { "type": "prometheus", "uid": "${datasource}" },
+          "fieldConfig": { "defaults": { "unit": "short" } },
+          "targets": [{
+            "expr": "sum by (pod) (rate(container_cpu_usage_seconds_total{namespace=\"$namespace\", pod=~\"$pod\", container!=\"\", container!=\"POD\"}[5m]))",
+            "legendFormat": "{{pod}}"
+          }]
+        },
+        {
+          "id": 8,
+          "title": "Memory Usage per Service",
+          "type": "timeseries",
+          "gridPos": { "x": 12, "y": 10, "w": 12, "h": 8 },
+          "datasource": { "type": "prometheus", "uid": "${datasource}" },
+          "fieldConfig": { "defaults": { "unit": "bytes" } },
+          "targets": [{
+            "expr": "sum by (pod) (container_memory_working_set_bytes{namespace=\"$namespace\", pod=~\"$pod\", container!=\"\", container!=\"POD\"})",
+            "legendFormat": "{{pod}}"
+          }]
+        },
+        {
+          "id": 9,
+          "title": "CPU Usage - Prod vs Staging",
+          "type": "timeseries",
+          "gridPos": { "x": 0, "y": 18, "w": 12, "h": 8 },
+          "datasource": { "type": "prometheus", "uid": "${datasource}" },
+          "fieldConfig": { "defaults": { "unit": "short" } },
+          "targets": [
+            {
+              "expr": "sum(rate(container_cpu_usage_seconds_total{namespace=\"ticket-booking\", container!=\"\", container!=\"POD\"}[5m]))",
+              "legendFormat": "production"
+            },
+            {
+              "expr": "sum(rate(container_cpu_usage_seconds_total{namespace=\"ticket-booking-staging\", container!=\"\", container!=\"POD\"}[5m]))",
+              "legendFormat": "staging"
+            }
+          ]
+        },
+        {
+          "id": 10,
+          "title": "Memory Usage - Prod vs Staging",
+          "type": "timeseries",
+          "gridPos": { "x": 12, "y": 18, "w": 12, "h": 8 },
+          "datasource": { "type": "prometheus", "uid": "${datasource}" },
+          "fieldConfig": { "defaults": { "unit": "bytes" } },
+          "targets": [
+            {
+              "expr": "sum(container_memory_working_set_bytes{namespace=\"ticket-booking\", container!=\"\", container!=\"POD\"})",
+              "legendFormat": "production"
+            },
+            {
+              "expr": "sum(container_memory_working_set_bytes{namespace=\"ticket-booking-staging\", container!=\"\", container!=\"POD\"})",
+              "legendFormat": "staging"
+            }
+          ]
+        }
+      ]
+    }
