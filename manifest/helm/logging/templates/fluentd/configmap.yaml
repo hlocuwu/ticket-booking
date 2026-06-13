@@ -33,38 +33,11 @@ data:
       @type record_transformer
       enable_ruby true
       <record>
-        environment ${
-          case record.dig('kubernetes', 'namespace_name').to_s
-          when 'ticket-booking' then 'production'
-          when 'ticket-booking-staging' then 'staging'
-          else nil
-          end
-        }
-        http_status ${
-          m = record['log'].to_s.match(/^\[GIN\].*\|\s*(\d{3})\s*\|/)
-          m ? m[1].to_i : nil
-        }
-        http_method ${
-          m = record['log'].to_s.match(/\|\s*([A-Z]+)\s+"[^"]+"/)
-          m ? m[1] : nil
-        }
-        http_path ${
-          m = record['log'].to_s.match(/\|\s*[A-Z]+\s+"([^"]+)"/)
-          m ? m[1] : nil
-        }
-        latency_ms ${
-          log = record['log'].to_s
-          m = log.match(/\|\s*([\d.]+)(ms|s|ns)\s*\|/)
-          m2 = log.match(/\|\s*([\d.]+)\xC2\xB5s\s*\|/)
-          if m
-            val = m[1].to_f
-            m[2] == 's' ? (val * 1000).round(3) : (m[2] == 'ns' ? (val / 1_000_000.0).round(6) : val.round(3))
-          elsif m2
-            (m2[1].to_f / 1000.0).round(6)
-          else
-            nil
-          end
-        }
+        environment ${ ns = record.dig('kubernetes', 'namespace_name').to_s; ns == 'ticket-booking' ? 'production' : (ns == 'ticket-booking-staging' ? 'staging' : nil) }
+        http_status ${ m = record['log'].to_s.match(/^\[GIN\].*\|\s*(\d{3})\s*\|/); m ? m[1].to_i : nil }
+        http_method ${ m = record['log'].to_s.match(/\|\s*([A-Z]+)\s+"[^"]+"/); m ? m[1] : nil }
+        http_path ${ m = record['log'].to_s.match(/\|\s*[A-Z]+\s+"([^"]+)"/); m ? m[1] : nil }
+        latency_ms ${ m = record['log'].to_s.match(/\|\s*([\d.]+)(ms|s|ns)\s*\|/); m ? (m[2]=='s' ? (m[1].to_f*1000).round(3) : m[1].to_f.round(3)) : nil }
       </record>
     </filter>
 
