@@ -36,6 +36,15 @@ spec:
   destination:
     server: https://kubernetes.default.svc
     namespace: ticket-booking
+  ignoreDifferences:
+    - group: cert-manager.io
+      kind: ClusterIssuer
+      jsonPointers:
+        - /status
+    - group: external-secrets.io
+      kind: ExternalSecret
+      jsonPointers:
+        - /metadata/annotations/force-sync
   syncPolicy:
     automated:
       prune: true
