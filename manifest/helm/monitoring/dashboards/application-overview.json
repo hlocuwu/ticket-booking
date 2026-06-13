@@ -39,7 +39,7 @@
             "type": "prometheus",
             "uid": "$datasource"
           },
-          "expr": "count(count by (pod) (container_cpu_usage_seconds_total{namespace=\"$namespace\", container!=\"\", container!=\"POD\"}))",
+          "expr": "count(count by (pod) (container_cpu_usage_seconds_total{namespace=~\"$namespace\", container!=\"\", container!=\"POD\"}))",
           "legendFormat": "Pods"
         }
       ],
@@ -82,7 +82,7 @@
             "type": "prometheus",
             "uid": "$datasource"
           },
-          "expr": "sum(kube_deployment_status_replicas_available{namespace=\"$namespace\"})",
+          "expr": "sum(kube_deployment_status_replicas_available{namespace=~\"$namespace\"})",
           "legendFormat": "Available"
         }
       ],
@@ -121,7 +121,7 @@
             "type": "prometheus",
             "uid": "$datasource"
           },
-          "expr": "sum(kube_deployment_spec_replicas{namespace=\"$namespace\"})",
+          "expr": "sum(kube_deployment_spec_replicas{namespace=~\"$namespace\"})",
           "legendFormat": "Desired"
         }
       ],
@@ -161,7 +161,7 @@
             "type": "prometheus",
             "uid": "$datasource"
           },
-          "expr": "sum(rate(container_cpu_usage_seconds_total{namespace=\"$namespace\", container!=\"\", container!=\"POD\"}[5m]))",
+          "expr": "sum(rate(container_cpu_usage_seconds_total{namespace=~\"$namespace\", container!=\"\", container!=\"POD\"}[5m]))",
           "legendFormat": "CPU cores"
         }
       ],
@@ -200,7 +200,7 @@
             "type": "prometheus",
             "uid": "$datasource"
           },
-          "expr": "sum(container_memory_working_set_bytes{namespace=\"$namespace\", container!=\"\", container!=\"POD\"})",
+          "expr": "sum(container_memory_working_set_bytes{namespace=~\"$namespace\", container!=\"\", container!=\"POD\"})",
           "legendFormat": "Memory"
         }
       ],
@@ -260,7 +260,7 @@
             "type": "prometheus",
             "uid": "$datasource"
           },
-          "expr": "kube_deployment_spec_replicas{namespace=\"$namespace\"}",
+          "expr": "kube_deployment_spec_replicas{namespace=~\"$namespace\"}",
           "instant": true,
           "legendFormat": "{{deployment}}",
           "refId": "A"
@@ -270,7 +270,7 @@
             "type": "prometheus",
             "uid": "$datasource"
           },
-          "expr": "kube_deployment_status_replicas_available{namespace=\"$namespace\"}",
+          "expr": "kube_deployment_status_replicas_available{namespace=~\"$namespace\"}",
           "instant": true,
           "legendFormat": "{{deployment}}",
           "refId": "B"
@@ -280,7 +280,7 @@
             "type": "prometheus",
             "uid": "$datasource"
           },
-          "expr": "kube_deployment_status_replicas_ready{namespace=\"$namespace\"}",
+          "expr": "kube_deployment_status_replicas_ready{namespace=~\"$namespace\"}",
           "instant": true,
           "legendFormat": "{{deployment}}",
           "refId": "C"
@@ -329,7 +329,7 @@
             "type": "prometheus",
             "uid": "$datasource"
           },
-          "expr": "sum by (pod) (rate(container_cpu_usage_seconds_total{namespace=\"$namespace\", pod=~\"$pod\", container!=\"\", container!=\"POD\"}[5m]))",
+          "expr": "sum by (pod) (rate(container_cpu_usage_seconds_total{namespace=~\"$namespace\", pod=~\"$pod\", container!=\"\", container!=\"POD\"}[5m]))",
           "legendFormat": "{{pod}}"
         }
       ],
@@ -359,7 +359,7 @@
             "type": "prometheus",
             "uid": "$datasource"
           },
-          "expr": "sum by (pod) (container_memory_working_set_bytes{namespace=\"$namespace\", pod=~\"$pod\", container!=\"\", container!=\"POD\"})",
+          "expr": "sum by (pod) (container_memory_working_set_bytes{namespace=~\"$namespace\", pod=~\"$pod\", container!=\"\", container!=\"POD\"})",
           "legendFormat": "{{pod}}"
         }
       ],
@@ -389,19 +389,11 @@
             "type": "prometheus",
             "uid": "$datasource"
           },
-          "expr": "sum(rate(container_cpu_usage_seconds_total{namespace=\"ticket-booking\", container!=\"\", container!=\"POD\"}[5m]))",
-          "legendFormat": "production"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "$datasource"
-          },
-          "expr": "sum(rate(container_cpu_usage_seconds_total{namespace=\"ticket-booking-staging\", container!=\"\", container!=\"POD\"}[5m]))",
-          "legendFormat": "staging"
+          "expr": "sum by (namespace) (rate(container_cpu_usage_seconds_total{namespace=~\"$namespace\", container!=\"\", container!=\"POD\"}[5m]))",
+          "legendFormat": "{{namespace}}"
         }
       ],
-      "title": "CPU - Prod vs Staging",
+      "title": "CPU by Namespace",
       "type": "timeseries"
     },
     {
@@ -427,20 +419,72 @@
             "type": "prometheus",
             "uid": "$datasource"
           },
-          "expr": "sum(container_memory_working_set_bytes{namespace=\"ticket-booking\", container!=\"\", container!=\"POD\"})",
-          "legendFormat": "production"
-        },
+          "expr": "sum by (namespace) (container_memory_working_set_bytes{namespace=~\"$namespace\", container!=\"\", container!=\"POD\"})",
+          "legendFormat": "{{namespace}}"
+        }
+      ],
+      "title": "Memory by Namespace",
+      "type": "timeseries"
+    },
+    {
+      "id": 11,
+      "title": "Network Receive (bytes/s)",
+      "type": "timeseries",
+      "gridPos": {
+        "x": 0,
+        "y": 26,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "$datasource"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "Bps"
+        }
+      },
+      "targets": [
         {
           "datasource": {
             "type": "prometheus",
             "uid": "$datasource"
           },
-          "expr": "sum(container_memory_working_set_bytes{namespace=\"ticket-booking-staging\", container!=\"\", container!=\"POD\"})",
-          "legendFormat": "staging"
+          "expr": "sum by (namespace) (rate(container_network_receive_bytes_total{namespace=~\"$namespace\", pod=~\"$pod\"}[5m]))",
+          "legendFormat": "{{namespace}} rx"
         }
-      ],
-      "title": "Memory - Prod vs Staging",
-      "type": "timeseries"
+      ]
+    },
+    {
+      "id": 12,
+      "title": "Network Transmit (bytes/s)",
+      "type": "timeseries",
+      "gridPos": {
+        "x": 12,
+        "y": 26,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "$datasource"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "Bps"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "$datasource"
+          },
+          "expr": "sum by (namespace) (rate(container_network_transmit_bytes_total{namespace=~\"$namespace\", pod=~\"$pod\"}[5m]))",
+          "legendFormat": "{{namespace}} tx"
+        }
+      ]
     }
   ],
   "refresh": "30s",
@@ -463,14 +507,14 @@
       },
       {
         "current": {
-          "text": "ticket-booking",
-          "value": "ticket-booking"
+          "text": "All",
+          "value": "$__all"
         },
         "datasource": {
           "type": "prometheus",
           "uid": "$datasource"
         },
-        "includeAll": false,
+        "includeAll": true,
         "label": "Namespace",
         "multi": false,
         "name": "namespace",
@@ -480,7 +524,8 @@
         },
         "refresh": 2,
         "sort": 1,
-        "type": "query"
+        "type": "query",
+        "allValue": "ticket-booking|ticket-booking-staging"
       },
       {
         "allValue": ".*",
@@ -493,7 +538,7 @@
         "multi": true,
         "name": "pod",
         "query": {
-          "query": "label_values(container_cpu_usage_seconds_total{namespace=\"$namespace\", container!=\"\", container!=\"POD\"}, pod)",
+          "query": "label_values(container_cpu_usage_seconds_total{namespace=~\"$namespace\", container!=\"\", container!=\"POD\"}, pod)",
           "refId": "StandardVariableQuery"
         },
         "refresh": 2,
