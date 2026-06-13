@@ -11,8 +11,12 @@
         "name": "datasource",
         "label": "Datasource",
         "type": "datasource",
-        "pluginId": "prometheus",
-        "hide": 0
+        "query": "prometheus",
+        "hide": 0,
+        "includeAll": false,
+        "multi": false,
+        "refresh": 1,
+        "current": { "text": "Prometheus", "value": "PBFA97CFB590B2093" }
       },
       {
         "name": "namespace",

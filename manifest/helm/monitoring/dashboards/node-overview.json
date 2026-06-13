@@ -11,8 +11,12 @@
         "name": "datasource",
         "label": "Datasource",
         "type": "datasource",
-        "pluginId": "prometheus",
-        "hide": 0
+        "query": "prometheus",
+        "hide": 0,
+        "includeAll": false,
+        "multi": false,
+        "refresh": 1,
+        "current": { "text": "Prometheus", "value": "PBFA97CFB590B2093" }
       },
       {
         "name": "node",
@@ -170,7 +174,7 @@
       },
       "targets": [{
         "datasource": { "type": "prometheus", "uid": "$datasource" },
-        "expr": "count(rate(container_cpu_usage_seconds_total{kubernetes_io_hostname=~\"$node\", container!=\"\", container!=\"POD\"}[5m]))",
+        "expr": "count(count by (pod, namespace) (container_cpu_usage_seconds_total{container!=\"\", container!=\"POD\"}))",
         "legendFormat": "Containers"
       }]
     },
