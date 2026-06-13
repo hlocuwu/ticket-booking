@@ -26,4 +26,3 @@ webhook:
   ingress:
     className: nginx
     host: webhook.flashticket.site
-  secret: "changeme-webhook-secret"
