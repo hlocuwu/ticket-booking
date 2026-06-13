@@ -17,9 +17,9 @@ spec:
         - values-staging.yaml
       parameters:
         - name: db.host
-          value: "10.81.97.3"
+          value: "10.48.209.3"
         - name: redis.host
-          value: "10.81.96.3"
+          value: "10.48.208.3"
         - name: externalSecrets.enabled
           value: "true"
         - name: externalSecrets.createClusterStore
