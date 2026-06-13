@@ -13,7 +13,7 @@ terraform {
   }
 
   backend "gcs" {
-    bucket = "ticket-booking-tfstate"
+    bucket = "ticket-booking-cloud-tfstate"
     prefix = "terraform/state"
   }
 }

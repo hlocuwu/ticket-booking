@@ -66,5 +66,6 @@ module "iam" {
   source     = "./modules/iam"
   project_id = var.project_id
 
-  depends_on = [google_project_service.apis]
+  # Workload Identity pool is created by GKE — must wait for cluster
+  depends_on = [google_project_service.apis, module.gke]
 }

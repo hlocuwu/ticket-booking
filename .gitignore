@@ -34,3 +34,10 @@ coverage.xml
 .idea/
 *.swp
 *.swo
+
+# Terraform — sensitive variable values, local state
+infra/terraform/terraform.tfvars
+infra/terraform/.terraform/
+infra/terraform/*.tfstate
+infra/terraform/*.tfstate.backup
+infra/terraform/.terraform.lock.hcl

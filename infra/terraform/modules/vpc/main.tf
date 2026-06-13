@@ -35,6 +35,10 @@ resource "google_service_networking_connection" "private_services" {
   network                 = google_compute_network.vpc.id
   service                 = "servicenetworking.googleapis.com"
   reserved_peering_ranges = [google_compute_global_address.private_services.name]
+
+  # GCP requires Cloud SQL/Memorystore to be gone before this connection can be deleted.
+  # ABANDON tells Terraform to skip deletion — GCP cleans up the peering automatically.
+  deletion_policy = "ABANDON"
 }
 
 # Firewall — allow internal traffic within VPC
