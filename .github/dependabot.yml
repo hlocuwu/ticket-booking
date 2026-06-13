@@ -3,6 +3,7 @@ updates:
   # Go modules
   - package-ecosystem: gomod
     directory: /src/services/auth
+    target-branch: staging
     schedule:
       interval: weekly
       day: monday
@@ -13,6 +14,7 @@ updates:
 
   - package-ecosystem: gomod
     directory: /src/services/booking
+    target-branch: staging
     schedule:
       interval: weekly
       day: monday
@@ -23,6 +25,7 @@ updates:
 
   - package-ecosystem: gomod
     directory: /src/services/event
+    target-branch: staging
     schedule:
       interval: weekly
       day: monday
@@ -33,6 +36,7 @@ updates:
 
   - package-ecosystem: gomod
     directory: /src/services/inventory
+    target-branch: staging
     schedule:
       interval: weekly
       day: monday
@@ -43,6 +47,7 @@ updates:
 
   - package-ecosystem: gomod
     directory: /src/services/waitingroom
+    target-branch: staging
     schedule:
       interval: weekly
       day: monday
@@ -54,6 +59,7 @@ updates:
   # npm — frontend
   - package-ecosystem: npm
     directory: /src/frontend
+    target-branch: staging
     schedule:
       interval: weekly
       day: tuesday
@@ -70,6 +76,7 @@ updates:
   # npm — payment service
   - package-ecosystem: npm
     directory: /src/services/payment
+    target-branch: staging
     schedule:
       interval: weekly
       day: tuesday
@@ -81,6 +88,7 @@ updates:
   # pip — notification service
   - package-ecosystem: pip
     directory: /src/services/notification
+    target-branch: staging
     schedule:
       interval: weekly
       day: wednesday
