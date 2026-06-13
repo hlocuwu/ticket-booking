@@ -21,3 +21,9 @@ fluentd:
 
 tls:
   enabled: false
+
+webhook:
+  ingress:
+    className: nginx
+    host: webhook.flashticket.site
+  secret: "changeme-webhook-secret"

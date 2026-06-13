@@ -1,0 +1,150 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: github-webhook-secret
+  namespace: {{ .Values.namespace }}
+type: Opaque
+stringData:
+  secret: {{ .Values.webhook.secret | quote }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: github-webhook-script
+  namespace: {{ .Values.namespace }}
+data:
+  server.py: |
+    import json, hmac, hashlib, os, urllib.request
+    from http.server import HTTPServer, BaseHTTPRequestHandler
+    from datetime import datetime, timezone
+
+    OS_URL = os.environ.get("OPENSEARCH_URL", "http://opensearch:9200")
+    SECRET = os.environ.get("WEBHOOK_SECRET", "").encode()
+
+    def calc_duration(run):
+        if run.get("status") != "completed" or not run.get("run_started_at"):
+            return None
+        fmt = "%Y-%m-%dT%H:%M:%SZ"
+        try:
+            start = datetime.strptime(run["run_started_at"], fmt).replace(tzinfo=timezone.utc)
+            end   = datetime.strptime(run["updated_at"],     fmt).replace(tzinfo=timezone.utc)
+            return max(0, round((end - start).total_seconds(), 1))
+        except Exception:
+            return None
+
+    def index_run(run, action):
+        doc = {
+            "@timestamp":       run.get("created_at"),
+            "run_id":           run.get("id"),
+            "run_number":       run.get("run_number"),
+            "workflow_name":    run.get("name", "unknown"),
+            "event":            run.get("event", "push"),
+            "action":           action,
+            "status":           run.get("status"),
+            "conclusion":       run.get("conclusion") or "in_progress",
+            "branch":           run.get("head_branch", "unknown"),
+            "actor":            run.get("actor", {}).get("login", "unknown"),
+            "duration_seconds": calc_duration(run),
+            "html_url":         run.get("html_url", ""),
+            "created_at":       run.get("created_at"),
+            "updated_at":       run.get("updated_at"),
+        }
+        doc_id = str(run.get("id", ""))
+        body = json.dumps(doc).encode()
+        req = urllib.request.Request(
+            f"{OS_URL}/cicd-metrics/_doc/{doc_id}",
+            data=body,
+            headers={"Content-Type": "application/json"},
+            method="PUT"
+        )
+        with urllib.request.urlopen(req, timeout=10) as r:
+            print(f"[{action}] run#{run.get('run_number')} {run.get('name')} → {run.get('conclusion') or run.get('status')}")
+
+    class Handler(BaseHTTPRequestHandler):
+        def do_GET(self):
+            self.send_response(200)
+            self.end_headers()
+            self.wfile.write(b"ok")
+
+        def do_POST(self):
+            if self.path != "/github":
+                self.send_response(404); self.end_headers(); return
+
+            length = int(self.headers.get("Content-Length", 0))
+            body = self.rfile.read(length)
+
+            if SECRET:
+                sig = self.headers.get("X-Hub-Signature-256", "")
+                expected = "sha256=" + hmac.new(SECRET, body, hashlib.sha256).hexdigest()
+                if not hmac.compare_digest(sig, expected):
+                    self.send_response(401); self.end_headers(); return
+
+            event = self.headers.get("X-GitHub-Event", "")
+            if event == "workflow_run":
+                try:
+                    payload = json.loads(body)
+                    index_run(payload["workflow_run"], payload.get("action", ""))
+                    self.send_response(200)
+                except Exception as e:
+                    print(f"Error: {e}")
+                    self.send_response(500)
+            else:
+                self.send_response(200)
+            self.end_headers()
+
+        def log_message(self, *args):
+            pass
+
+    if __name__ == "__main__":
+        print("GitHub webhook receiver listening on :8080/github")
+        HTTPServer(("0.0.0.0", 8080), Handler).serve_forever()
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: github-webhook
+  namespace: {{ .Values.namespace }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: github-webhook
+  template:
+    metadata:
+      labels:
+        app: github-webhook
+    spec:
+      containers:
+        - name: webhook
+          image: python:3.11-alpine
+          command: [python, /app/server.py]
+          ports:
+            - containerPort: 8080
+          env:
+            - name: OPENSEARCH_URL
+              value: http://opensearch.{{ .Values.namespace }}.svc.cluster.local:9200
+            - name: WEBHOOK_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: github-webhook-secret
+                  key: secret
+          volumeMounts:
+            - name: script
+              mountPath: /app
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+      volumes:
+        - name: script
+          configMap:
+            name: github-webhook-script

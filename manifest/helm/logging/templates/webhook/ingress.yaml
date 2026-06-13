@@ -1,0 +1,20 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: github-webhook
+  namespace: {{ .Values.namespace }}
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: "1m"
+spec:
+  ingressClassName: {{ .Values.webhook.ingress.className }}
+  rules:
+    - host: {{ .Values.webhook.ingress.host }}
+      http:
+        paths:
+          - path: /github
+            pathType: Exact
+            backend:
+              service:
+                name: github-webhook
+                port:
+                  number: 80
