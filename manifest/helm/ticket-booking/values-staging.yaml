@@ -44,6 +44,7 @@ resources:
 tls:
   enabled: true
   acmeEmail: ""   # injected via ArgoCD parameter
+  createClusterIssuer: false
 
 # External Secrets — same GCP Secret Manager, same secrets as prod
 externalSecrets:

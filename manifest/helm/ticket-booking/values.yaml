@@ -71,6 +71,7 @@ secrets:
 tls:
   enabled: false
   acmeEmail: ""
+  createClusterIssuer: true
 
 # External Secrets Operator — disabled locally (use values.secrets above), enabled on GKE
 externalSecrets:
