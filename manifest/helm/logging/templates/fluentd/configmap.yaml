@@ -49,13 +49,16 @@ data:
       logstash_prefix ticket-booking-logs
       include_tag_key true
       tag_key @log_name
+      bulk_message_request_threshold 10mb
       <buffer>
         @type file
         path /var/log/fluentd-buffers/kubernetes.system.buffer
         flush_mode interval
-        flush_interval 5s
+        flush_interval 10s
         retry_type exponential_backoff
-        retry_max_interval 30
+        retry_max_interval 60
         overflow_action block
+        chunk_limit_size 8mb
+        total_limit_size 512mb
       </buffer>
     </match>
