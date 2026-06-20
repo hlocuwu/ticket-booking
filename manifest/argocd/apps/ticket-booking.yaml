@@ -45,6 +45,12 @@ spec:
       kind: ExternalSecret
       jsonPointers:
         - /metadata/annotations/force-sync
+        - /spec/data/0/remoteRef/conversionStrategy
+        - /spec/data/0/remoteRef/decodingStrategy
+        - /spec/data/0/remoteRef/metadataPolicy
+        - /spec/target/deletionPolicy
+        - /spec/target/template/engineVersion
+        - /spec/target/template/mergePolicy
   syncPolicy:
     automated:
       prune: true
