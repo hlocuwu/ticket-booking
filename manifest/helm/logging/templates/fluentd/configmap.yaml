@@ -30,6 +30,14 @@ data:
     </filter>
 
     <filter kubernetes.**>
+      @type grep
+      <regexp>
+        key $.kubernetes.namespace_name
+        pattern ^(ticket-booking|ticket-booking-staging)$
+      </regexp>
+    </filter>
+
+    <filter kubernetes.**>
       @type record_transformer
       enable_ruby true
       <record>
