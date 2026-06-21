@@ -24,6 +24,9 @@ src/services/event/event
 src/services/inventory/inventory
 src/services/waitingroom/waitingroom
 
+# Locust — pre-generated JWT tokens (sensitive, regenerate with generate_tokens.py)
+tokens.json
+
 # Go test coverage
 coverage.out
 coverage.xml

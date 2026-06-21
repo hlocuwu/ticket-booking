@@ -414,6 +414,8 @@ func main() {
 		log.Fatalf("Failed to connect to database: %v", err)
 	}
 	defer db.Close()
+	db.SetMaxOpenConns(10)
+	db.SetMaxIdleConns(5)
 
 	if err := db.Ping(); err != nil {
 		log.Fatalf("Database is unreachable: %v", err)

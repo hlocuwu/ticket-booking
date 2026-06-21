@@ -457,6 +457,8 @@ func main() {
 		log.Fatalf("Error opening database: %v", err)
 	}
 	defer db.Close()
+	db.SetMaxOpenConns(10)
+	db.SetMaxIdleConns(5)
 
 	if err = db.Ping(); err != nil {
 		log.Fatalf("Could not connect to database: %v", err)

@@ -56,7 +56,7 @@ func isOrderConfirmed(rdb *redis.Client, orderID string) bool {
 	return err == nil && val > 0
 }
 
-func setupRouter(rdb *redis.Client, svc Services) *gin.Engine {
+func setupRouter(rdb *redis.Client, svc Services, maxConcurrent int64) *gin.Engine {
 	client := resty.New()
 	router := gin.Default()
 
@@ -105,7 +105,7 @@ func setupRouter(rdb *redis.Client, svc Services) *gin.Engine {
 		var queueStatus struct {
 			Position int64 `json:"position"`
 		}
-		if jsonErr := json.Unmarshal(queueResp.Body(), &queueStatus); jsonErr != nil || queueStatus.Position > 1 {
+		if jsonErr := json.Unmarshal(queueResp.Body(), &queueStatus); jsonErr != nil || queueStatus.Position > maxConcurrent {
 			c.JSON(http.StatusForbidden, gin.H{"error": "It's not your turn yet. Please wait in the queue."})
 			return
 		}
@@ -316,7 +316,15 @@ func main() {
 		svc.AppPublicURL = "http://localhost:3000"
 	}
 
-	router := setupRouter(rdb, svc)
+	maxConcurrent := int64(50)
+	if v := os.Getenv("QUEUE_MAX_CONCURRENT"); v != "" {
+		if n, err := strconv.ParseInt(v, 10, 64); err == nil && n > 0 {
+			maxConcurrent = n
+		}
+	}
+	log.Printf("Queue max concurrent slots: %d", maxConcurrent)
+
+	router := setupRouter(rdb, svc, maxConcurrent)
 
 	port := os.Getenv("PORT")
 	if port == "" {
