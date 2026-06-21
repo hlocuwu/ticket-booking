@@ -18,6 +18,14 @@
     "jest": "^30.4.2",
     "supertest": "^7.0.0"
   },
+  "overrides": {
+    "form-data": "^4.0.2",
+    "uuid": "^9.0.1",
+    "braces": "^3.0.3",
+    "micromatch": "^4.0.8",
+    "tough-cookie": "^4.1.4",
+    "qs": "^6.13.0"
+  },
   "jest": {
     "testEnvironment": "node",
     "testMatch": ["**/tests/**/*.test.js"],
