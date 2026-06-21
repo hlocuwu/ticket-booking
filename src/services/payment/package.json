@@ -24,7 +24,8 @@
     "braces": "^3.0.3",
     "micromatch": "^4.0.8",
     "tough-cookie": "^4.1.4",
-    "qs": "^6.13.0"
+    "qs": "^6.13.0",
+    "js-yaml": "^4.1.0"
   },
   "jest": {
     "testEnvironment": "node",
