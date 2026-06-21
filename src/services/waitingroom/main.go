@@ -74,6 +74,20 @@ func setupRouter(rdb *redis.Client) *gin.Engine {
 		c.JSON(http.StatusOK, gin.H{"message": "Left queue successfully", "user_id": req.UserID})
 	})
 
+	router.GET("/queue/size", func(c *gin.Context) {
+		eventID := c.Query("event_id")
+		if eventID == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "event_id is required"})
+			return
+		}
+		total, err := rdb.ZCard(ctx, queueKey(eventID)).Result()
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get queue size"})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"event_id": eventID, "total": total})
+	})
+
 	router.GET("/queue/status", func(c *gin.Context) {
 		userID := c.Query("user_id")
 		eventID := c.Query("event_id")

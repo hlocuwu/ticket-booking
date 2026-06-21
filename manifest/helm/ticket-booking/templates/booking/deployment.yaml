@@ -42,6 +42,8 @@ spec:
               value: "{{ .Values.redis.host }}:{{ .Values.redis.port }}"
             - name: APP_PUBLIC_URL
               value: {{ .Values.app.publicUrl | quote }}
+            - name: QUEUE_MAX_CONCURRENT
+              value: {{ .Values.queue.maxConcurrent | default 50 | quote }}
           livenessProbe:
             httpGet:
               path: /health
