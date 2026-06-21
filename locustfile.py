@@ -13,6 +13,8 @@ Run:
         --headless -u 30 -r 3 --run-time 10m
 """
 
+import json
+import os
 import time
 import random
 import threading
@@ -20,31 +22,28 @@ import requests
 from locust import HttpUser, task, between, events
 
 # ── Config ─────────────────────────────────────────────────────────────────────
-PASSWORD       = "Load@1234"
-NUM_USERS      = 30
-EVENT_IDS      = list(range(1, 31))
+NUM_USERS      = 1000
+TOKEN_FILE     = os.path.join(os.path.dirname(__file__), "tokens.json")
+EVENT_IDS      = list(range(1, 11))
+HOT_EVENT_ID   = 10  # VCT Pacific Stage 1 Finals (Valorant)
 RETURN_URL     = "https://flashticket.site/payment-callback"
-QUEUE_POLL_INT = 1.0   # seconds between queue status polls
-QUEUE_TIMEOUT  = 30    # seconds to wait for position=1 before giving up
+QUEUE_POLL_INT    = 1.0   # seconds between queue status polls
+QUEUE_TIMEOUT     = 60    # seconds to wait before giving up
+QUEUE_MAX_SLOTS   = 50    # must match QUEUE_MAX_CONCURRENT on server
 
-# ── Shared token cache ──────────────────────────────────────────────────────────
-_lock   = threading.Lock()
-_tokens = {}   # username → token
+# ── Load pre-generated tokens from file ────────────────────────────────────────
+_tokens: dict = {}
 
 
-def get_token(client, username: str) -> str:
-    with _lock:
-        if username in _tokens:
-            return _tokens[username]
-    resp = client.post(
-        "/api/auth/login",
-        json={"username": username, "password": PASSWORD},
-        name="/api/auth/login [setup]",
-    )
-    token = resp.json().get("token", "")
-    with _lock:
-        _tokens[username] = token
-    return token
+@events.init.add_listener
+def on_init(environment, **kwargs):
+    if not os.path.exists(TOKEN_FILE):
+        print(f"\n[ERROR] {TOKEN_FILE} not found. Run: python3 generate_tokens.py\n")
+        return
+    with open(TOKEN_FILE) as f:
+        _tokens.update(json.load(f))
+    ok = sum(1 for t in _tokens.values() if t)
+    print(f"\n[init] Loaded {ok}/{len(_tokens)} tokens — no login calls during test\n")
 
 
 # ── User counter (thread-safe) ──────────────────────────────────────────────────
@@ -68,8 +67,8 @@ class BookingUser(HttpUser):
         idx            = next_user_index()
         self.username  = f"locust_{idx + 1}"
         self.email     = f"locust_{idx + 1}@test.com"
-        self.event_id  = EVENT_IDS[idx % len(EVENT_IDS)]
-        self.token     = get_token(self.client, self.username)
+        self.event_id  = HOT_EVENT_ID
+        self.token     = _tokens.get(self.username, "")
         self.auth_hdr  = {"Authorization": f"Bearer {self.token}"}
 
     # ── Tasks ──────────────────────────────────────────────────────────────────
@@ -93,7 +92,7 @@ class BookingUser(HttpUser):
             name="/api/events/events/[id]",
         )
 
-        # 2. Zones
+        # 2. Zones (chỉ để biết zone_id và giá — không query inventory ở đây)
         zones_resp = self.client.get(
             f"/api/events/events/{self.event_id}/zones",
             name="/api/events/events/[id]/zones",
@@ -103,22 +102,9 @@ class BookingUser(HttpUser):
             return
         zone = zones[0]
         zone_id    = zone["id"]
-        zone_price = zone.get("price", 100000)
+        zone_price = int(zone.get("price") or 100000)
 
-        # 3. Available tickets
-        inv_resp = self.client.get(
-            f"/api/inventory/tickets?event_id={self.event_id}&zone_id={zone_id}",
-            name="/api/inventory/tickets",
-        )
-        if inv_resp.status_code != 200:
-            return
-        available = [t for t in inv_resp.json() if not t.get("is_reserved")]
-        if not available:
-            return
-        ticket = random.choice(available)
-        ticket_id = ticket["id"]
-
-        # 4. Join waiting room
+        # 3. Join waiting room TRƯỚC khi chọn ghế
         join_resp = self.client.post(
             "/api/queue/queue/join",
             json={"user_id": self.username, "event_id": str(self.event_id)},
@@ -127,7 +113,7 @@ class BookingUser(HttpUser):
         if join_resp.status_code not in (200, 201):
             return
 
-        # 5. Poll queue until position = 1
+        # 4. Poll queue đến khi đến lượt
         deadline = time.time() + QUEUE_TIMEOUT
         position = 999
         while time.time() < deadline:
@@ -137,11 +123,11 @@ class BookingUser(HttpUser):
             )
             if status_resp.status_code == 200:
                 position = status_resp.json().get("position", 999)
-                if position == 1:
+                if position <= QUEUE_MAX_SLOTS:
                     break
             time.sleep(QUEUE_POLL_INT)
 
-        if position != 1:
+        if position > QUEUE_MAX_SLOTS:
             # Timed out — leave queue and skip
             self.client.post(
                 "/api/queue/queue/leave",
@@ -149,6 +135,20 @@ class BookingUser(HttpUser):
                 name="/api/queue/queue/leave",
             )
             return
+
+        # 5b. Đến lượt rồi — giờ mới get danh sách ghế available
+        inv_resp = self.client.get(
+            f"/api/inventory/tickets?event_id={self.event_id}&zone_id={zone_id}",
+            name="/api/inventory/tickets",
+        )
+        if inv_resp.status_code != 200:
+            self._leave_queue()
+            return
+        available = [t for t in inv_resp.json() if not t.get("is_reserved")]
+        if not available:
+            self._leave_queue()
+            return
+        ticket_id = random.choice(available)["id"]
 
         # 6. Book
         book_resp = self.client.post(
@@ -165,6 +165,8 @@ class BookingUser(HttpUser):
             name="/api/booking/book",
         )
         if book_resp.status_code != 200:
+            if book_resp.status_code == 400:
+                print(f"[400] user={self.username} event={self.event_id} ticket={ticket_id} amount={zone_price} body={book_resp.text}")
             self._leave_queue()
             return
         order_id = book_resp.json().get("order_id", "")
@@ -189,8 +191,8 @@ class BookingUser(HttpUser):
         # 8. Leave queue
         self._leave_queue()
 
-        # Pick next available event for subsequent iterations
-        self.event_id = random.choice(EVENT_IDS)
+        # Giữ nguyên hot event cho các iteration tiếp theo
+        self.event_id = HOT_EVENT_ID
 
     def _leave_queue(self):
         self.client.post(
