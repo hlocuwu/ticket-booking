@@ -1,9 +1,10 @@
 FROM node:22-alpine
+RUN apk update && apk upgrade --no-cache && npm install -g npm@latest
 
 WORKDIR /app
 
 COPY package*.json ./
-RUN npm install
+RUN npm install && npm audit fix --force 2>/dev/null || true
 
 COPY . .
 

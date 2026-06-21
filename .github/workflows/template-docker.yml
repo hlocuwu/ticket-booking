@@ -91,7 +91,11 @@ jobs:
 
       - name: Push to GHCR
         if: github.event_name == 'push'
-        run: |
-          while IFS= read -r tag; do
-            [ -n "$tag" ] && docker push "$tag"
-          done <<< "${{ steps.meta.outputs.tags }}"
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ steps.ctx.outputs.path }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=${{ matrix.service }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.service }}

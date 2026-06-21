@@ -56,7 +56,7 @@ func do(r http.Handler, method, path, body string, headers ...string) *httptest.
 
 func TestHealth(t *testing.T) {
 	rdb, _ := newTestRedis(t)
-	r := setupRouter(rdb, Services{})
+	r := setupRouter(rdb, Services{}, 50)
 
 	w := do(r, http.MethodGet, "/health", "")
 	if w.Code != http.StatusOK {
@@ -73,7 +73,7 @@ func TestHealth(t *testing.T) {
 
 func TestRollback_MissingFields(t *testing.T) {
 	rdb, _ := newTestRedis(t)
-	r := setupRouter(rdb, Services{})
+	r := setupRouter(rdb, Services{}, 50)
 
 	w := do(r, http.MethodPost, "/rollback", `{"order_id":"ORD-1"}`)
 	if w.Code != http.StatusBadRequest {
@@ -86,7 +86,7 @@ func TestRollback_Success(t *testing.T) {
 	inv := mockServer(http.StatusOK, `{"message":"ok"}`)
 	defer inv.Close()
 
-	r := setupRouter(rdb, Services{InventoryURL: inv.URL})
+	r := setupRouter(rdb, Services{InventoryURL: inv.URL}, 50)
 	w := do(r, http.MethodPost, "/rollback", `{"order_id":"ORD-1","user_id":"u1","ticket_ids":[1,2]}`)
 	if w.Code != http.StatusOK {
 		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
@@ -95,7 +95,7 @@ func TestRollback_Success(t *testing.T) {
 
 func TestRollback_InventoryDown(t *testing.T) {
 	rdb, _ := newTestRedis(t)
-	r := setupRouter(rdb, Services{InventoryURL: "http://127.0.0.1:1"}) // unreachable
+	r := setupRouter(rdb, Services{InventoryURL: "http://127.0.0.1:1"}, 50) // unreachable
 
 	w := do(r, http.MethodPost, "/rollback", `{"order_id":"ORD-1","user_id":"u1","ticket_ids":[1]}`)
 	if w.Code != http.StatusInternalServerError {
@@ -107,7 +107,7 @@ func TestRollback_InventoryDown(t *testing.T) {
 
 func TestConfirm_MissingFields(t *testing.T) {
 	rdb, _ := newTestRedis(t)
-	r := setupRouter(rdb, Services{})
+	r := setupRouter(rdb, Services{}, 50)
 
 	w := do(r, http.MethodPost, "/confirm", `{"order_id":"ORD-1"}`)
 	if w.Code != http.StatusBadRequest {
@@ -123,7 +123,7 @@ func TestConfirm_Success(t *testing.T) {
 	defer notif.Close()
 
 	svc := Services{InventoryURL: inv.URL, NotificationURL: notif.URL}
-	r := setupRouter(rdb, svc)
+	r := setupRouter(rdb, svc, 50)
 
 	payload := `{"order_id":"ORD-1","user_id":"u1","user_email":"u@test.com","ticket_ids":[1,2],"event_name":"Festival","amount":200000}`
 	w := do(r, http.MethodPost, "/confirm", payload)
@@ -136,7 +136,7 @@ func TestConfirm_Success(t *testing.T) {
 
 func TestBook_MissingAuthHeader(t *testing.T) {
 	rdb, _ := newTestRedis(t)
-	r := setupRouter(rdb, Services{})
+	r := setupRouter(rdb, Services{}, 50)
 
 	payload := `{"user_id":"u1","event_id":"e1","ticket_ids":[1],"amount":100,"return_url":"http://localhost"}`
 	w := do(r, http.MethodPost, "/book", payload)
@@ -147,7 +147,7 @@ func TestBook_MissingAuthHeader(t *testing.T) {
 
 func TestBook_MissingFields(t *testing.T) {
 	rdb, _ := newTestRedis(t)
-	r := setupRouter(rdb, Services{})
+	r := setupRouter(rdb, Services{}, 50)
 
 	w := do(r, http.MethodPost, "/book", `{}`, "Authorization", "Bearer sometoken")
 	if w.Code != http.StatusBadRequest {
@@ -158,7 +158,7 @@ func TestBook_MissingFields(t *testing.T) {
 func TestBook_AuthServiceDown(t *testing.T) {
 	rdb, _ := newTestRedis(t)
 	svc := Services{AuthURL: "http://127.0.0.1:1"} // unreachable
-	r := setupRouter(rdb, svc)
+	r := setupRouter(rdb, svc, 50)
 
 	payload := `{"user_id":"u1","event_id":"e1","ticket_ids":[1],"amount":100,"return_url":"http://localhost"}`
 	w := do(r, http.MethodPost, "/book", payload, "Authorization", "Bearer token")
@@ -172,7 +172,7 @@ func TestBook_AuthInvalidToken(t *testing.T) {
 	auth := mockServer(http.StatusUnauthorized, `{"error":"invalid token"}`)
 	defer auth.Close()
 
-	r := setupRouter(rdb, Services{AuthURL: auth.URL})
+	r := setupRouter(rdb, Services{AuthURL: auth.URL}, 50)
 	payload := `{"user_id":"u1","event_id":"e1","ticket_ids":[1],"amount":100,"return_url":"http://localhost"}`
 	w := do(r, http.MethodPost, "/book", payload, "Authorization", "Bearer badtoken")
 	if w.Code != http.StatusUnauthorized {
