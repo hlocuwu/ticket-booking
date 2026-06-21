@@ -9,6 +9,7 @@ RUN npm run build
 
 # Stage 2: Serve with Nginx
 FROM nginx:alpine
+RUN apk update && apk upgrade --no-cache
 # Remove default Nginx config
 RUN rm /etc/nginx/conf.d/default.conf
 # Copy our custom Nginx config
