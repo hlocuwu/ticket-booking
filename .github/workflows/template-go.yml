@@ -57,9 +57,3 @@ jobs:
           go install golang.org/x/vuln/cmd/govulncheck@latest
           govulncheck ./...
 
-      - name: Upload coverage artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: coverage-go-${{ matrix.service }}
-          path: src/services/${{ matrix.service }}/coverage.out
-          retention-days: 1
