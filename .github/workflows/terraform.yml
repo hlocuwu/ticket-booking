@@ -1,0 +1,78 @@
+name: Terraform CI
+
+on:
+  push:
+    branches: [main, staging]
+    paths:
+      - 'infra/terraform/**'
+  pull_request:
+    branches: [main, staging]
+    paths:
+      - 'infra/terraform/**'
+
+jobs:
+  terraform:
+    name: Lint & Validate
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: infra/terraform
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3
+        with:
+          terraform_version: "~1.9"
+
+      - name: Format check
+        run: terraform fmt -check -recursive
+
+      - name: Init (no backend)
+        run: terraform init -backend=false
+
+      - name: Validate
+        run: terraform validate
+
+      - name: TFLint
+        uses: terraform-linters/setup-tflint@6e87008f9dd1fe3e34e66aca6c97b4a69f72a7f4 # v4
+        with:
+          tflint_version: latest
+      - run: |
+          tflint --init
+          tflint --recursive
+
+      - name: Checkov security scan
+        uses: bridgecrewio/checkov-action@fa9edf8f0a491c59a924ea6accd5bdcf07752cff # master
+        with:
+          directory: infra/terraform
+          framework: terraform
+          soft_fail: true
+
+      - name: Terraform Plan
+        if: github.event_name == 'pull_request' && secrets.GCP_SA_KEY != ''
+        env:
+          GOOGLE_CREDENTIALS: ${{ secrets.GCP_SA_KEY }}
+          GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+        run: |
+          terraform init
+          terraform plan -no-color -input=false \
+            -var="project_id=$GCP_PROJECT_ID" \
+            -var="db_password=placeholder" \
+            -var="jwt_secret=placeholder" \
+            -var="ghcr_token=placeholder" \
+            2>&1 | tee plan.txt
+
+      - name: Comment plan on PR
+        if: github.event_name == 'pull_request' && secrets.GCP_SA_KEY != ''
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
+        with:
+          script: |
+            const fs = require('fs');
+            const plan = fs.readFileSync('infra/terraform/plan.txt', 'utf8');
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '```terraform\n' + plan.slice(0, 60000) + '\n```'
+            });

@@ -103,6 +103,6 @@ jobs:
       services: ${{ needs.changes.outputs.docker_services }}
     secrets: inherit
 
-  secret-scan:
+  gitleaks:
     if: "!startsWith(github.ref, 'refs/tags/')"
     uses: ./.github/workflows/template-gitleaks.yml
