@@ -57,10 +57,9 @@ jobs:
           go install golang.org/x/vuln/cmd/govulncheck@latest
           govulncheck ./...
 
-      - name: SonarCloud Scan
-        uses: SonarSource/sonarcloud-github-action@master
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      - name: Upload coverage artifact
+        uses: actions/upload-artifact@v4
         with:
-          projectBaseDir: src/services/${{ matrix.service }}
+          name: coverage-go-${{ matrix.service }}
+          path: src/services/${{ matrix.service }}/coverage.out
+          retention-days: 1

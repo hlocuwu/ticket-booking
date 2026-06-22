@@ -1,0 +1,55 @@
+name: SonarCloud
+
+on:
+  push:
+    branches: [main, staging]
+  pull_request:
+    branches: [main, staging]
+
+jobs:
+  sonarcloud:
+    name: SonarCloud Scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # Go coverage
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26"
+      - name: Go test coverage
+        run: |
+          for svc in auth booking event inventory waitingroom; do
+            cd src/services/$svc
+            go test -coverprofile=coverage.out ./... 2>/dev/null || true
+            cp coverage.out ../../../coverage-$svc.out
+            cd ../../..
+          done
+
+      # Node coverage (payment)
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Payment test coverage
+        run: |
+          cd src/services/payment
+          npm ci
+          npm test -- --coverage --coverageReporters=lcov 2>/dev/null || true
+
+      # Python coverage (notification)
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Notification test coverage
+        run: |
+          cd src/services/notification
+          pip install -q pytest pytest-cov -r requirements.txt
+          pytest tests/ --cov=. --cov-report=xml 2>/dev/null || true
+
+      - name: SonarCloud Scan
+        uses: SonarSource/sonarcloud-github-action@master
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
