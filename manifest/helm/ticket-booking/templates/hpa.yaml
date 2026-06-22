@@ -1,0 +1,34 @@
+{{- $root := . }}
+{{- range $svc, $cfg := .Values.hpa }}
+{{- if $cfg.enabled }}
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ $svc }}
+  namespace: {{ $root.Values.namespace }}
+  labels:
+    {{- include "ticket-booking.labels" $root | nindent 4 }}
+    app.kubernetes.io/component: {{ $svc }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ $svc }}
+  minReplicas: {{ $cfg.minReplicas }}
+  maxReplicas: {{ $cfg.maxReplicas }}
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ $cfg.targetCPU }}
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: {{ $cfg.targetMemory }}
+---
+{{- end }}
+{{- end }}

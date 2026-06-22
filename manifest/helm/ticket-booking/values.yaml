@@ -60,6 +60,57 @@ replicas:
   waitingroom: 1
   frontend: 1
 
+# Horizontal Pod Autoscaler
+hpa:
+  auth:
+    enabled: true
+    minReplicas: 1
+    maxReplicas: 3
+    targetCPU: 70
+    targetMemory: 80
+  booking:
+    enabled: true
+    minReplicas: 1
+    maxReplicas: 5
+    targetCPU: 60
+    targetMemory: 80
+  event:
+    enabled: true
+    minReplicas: 1
+    maxReplicas: 5
+    targetCPU: 60
+    targetMemory: 80
+  inventory:
+    enabled: true
+    minReplicas: 1
+    maxReplicas: 5
+    targetCPU: 60
+    targetMemory: 80
+  waitingroom:
+    enabled: true
+    minReplicas: 1
+    maxReplicas: 3
+    targetCPU: 70
+    targetMemory: 80
+  payment:
+    enabled: true
+    minReplicas: 1
+    maxReplicas: 3
+    targetCPU: 70
+    targetMemory: 80
+  notification:
+    enabled: false
+    minReplicas: 1
+    maxReplicas: 2
+    targetCPU: 70
+    targetMemory: 80
+  frontend:
+    enabled: true
+    minReplicas: 1
+    maxReplicas: 3
+    targetCPU: 70
+    targetMemory: 80
+
 # Secrets — do NOT set real values here; override at deploy time via --set or a gitignored secrets file
 secrets:
   dbPassword: ""
