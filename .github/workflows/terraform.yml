@@ -35,7 +35,7 @@ jobs:
         run: terraform validate
 
       - name: TFLint
-        uses: terraform-linters/setup-tflint@v4
+        uses: terraform-linters/setup-tflint@6e87008f9dd1fe3e34e66aca6c97b4a69f72a7f4 # v4
         with:
           tflint_version: latest
       - run: |
@@ -43,7 +43,7 @@ jobs:
           tflint --recursive
 
       - name: Checkov security scan
-        uses: bridgecrewio/checkov-action@v12
+        uses: bridgecrewio/checkov-action@fa9edf8f0a491c59a924ea6accd5bdcf07752cff # master
         with:
           directory: infra/terraform
           framework: terraform
@@ -53,10 +53,11 @@ jobs:
         if: github.event_name == 'pull_request' && secrets.GCP_SA_KEY != ''
         env:
           GOOGLE_CREDENTIALS: ${{ secrets.GCP_SA_KEY }}
+          GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
         run: |
           terraform init
           terraform plan -no-color -input=false \
-            -var="project_id=${{ vars.GCP_PROJECT_ID }}" \
+            -var="project_id=$GCP_PROJECT_ID" \
             -var="db_password=placeholder" \
             -var="jwt_secret=placeholder" \
             -var="ghcr_token=placeholder" \
@@ -64,7 +65,7 @@ jobs:
 
       - name: Comment plan on PR
         if: github.event_name == 'pull_request' && secrets.GCP_SA_KEY != ''
-        uses: actions/github-script@v7
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
         with:
           script: |
             const fs = require('fs');
