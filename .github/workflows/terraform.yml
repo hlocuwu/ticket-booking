@@ -2,23 +2,33 @@ name: Terraform CI
 
 on:
   push:
-    branches: [main, staging]
+    branches: [main]
     paths:
       - 'infra/terraform/**'
-      - '.github/workflows/terraform.yml'
   pull_request:
-    branches: [main, staging]
+    branches: [main]
     paths:
       - 'infra/terraform/**'
-      - '.github/workflows/terraform.yml'
+
+env:
+  GOOGLE_CREDENTIALS: ${{ secrets.GCP_SA_KEY }}
+  TF_VAR_project_id: ${{ vars.GCP_PROJECT_ID }}
+  TF_VAR_db_password: ${{ secrets.TF_DB_PASSWORD }}
+  TF_VAR_jwt_secret: ${{ secrets.TF_JWT_SECRET }}
+  TF_VAR_ghcr_token: ${{ secrets.GHCR_TOKEN }}
+  TF_VAR_momo_access_key: ${{ secrets.MOMO_ACCESS_KEY }}
+  TF_VAR_momo_secret_key: ${{ secrets.MOMO_SECRET_KEY }}
 
 jobs:
   terraform:
-    name: Lint & Validate
+    name: Terraform
     runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: infra/terraform
+    permissions:
+      contents: read
+      pull-requests: write
 
     steps:
       - uses: actions/checkout@v4
@@ -31,27 +41,17 @@ jobs:
         run: terraform fmt -check -recursive
 
       - name: Init
-        run: terraform init -backend=false
+        run: terraform init
 
       - name: Validate
         run: terraform validate
 
       - name: Plan
-        if: github.event_name == 'pull_request' && secrets.GCP_SA_KEY != ''
-        env:
-          GOOGLE_CREDENTIALS: ${{ secrets.GCP_SA_KEY }}
-          GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
-        run: |
-          terraform init
-          terraform plan -no-color -input=false \
-            -var="project_id=$GCP_PROJECT_ID" \
-            -var="db_password=placeholder" \
-            -var="jwt_secret=placeholder" \
-            -var="ghcr_token=placeholder" \
-            2>&1 | tee plan.txt
+        if: github.event_name == 'pull_request'
+        run: terraform plan -no-color -input=false 2>&1 | tee plan.txt
 
       - name: Comment plan on PR
-        if: github.event_name == 'pull_request' && secrets.GCP_SA_KEY != ''
+        if: github.event_name == 'pull_request'
         uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
         with:
           script: |
@@ -61,18 +61,9 @@ jobs:
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: '```terraform\n' + plan.slice(0, 60000) + '\n```'
+              body: '### Terraform Plan\n```terraform\n' + plan.slice(0, 60000) + '\n```'
             });
 
       - name: Apply
-        if: github.event_name == 'push' && secrets.GCP_SA_KEY != ''
-        env:
-          GOOGLE_CREDENTIALS: ${{ secrets.GCP_SA_KEY }}
-          GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
-        run: |
-          terraform init
-          terraform apply -auto-approve -input=false \
-            -var="project_id=$GCP_PROJECT_ID" \
-            -var="db_password=placeholder" \
-            -var="jwt_secret=placeholder" \
-            -var="ghcr_token=placeholder"
+        if: github.event_name == 'push'
+        run: terraform apply -auto-approve -input=false

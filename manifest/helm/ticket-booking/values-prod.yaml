@@ -5,6 +5,9 @@
 image:
   tag: latest
 
+db:
+  name: ticket_db
+
 app:
   publicUrl: "https://ticket.example.com"   # replace with actual domain
 

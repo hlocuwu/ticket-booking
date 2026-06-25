@@ -55,6 +55,12 @@ CREATE INDEX IF NOT EXISTS idx_event_zones_event_id    ON event_zones(event_id);
 CREATE INDEX IF NOT EXISTS idx_events_category         ON events(category);
 CREATE INDEX IF NOT EXISTS idx_events_date             ON events(date);
 
+DO $$ BEGIN
+  IF EXISTS (SELECT 1 FROM events LIMIT 1) THEN
+    RAISE NOTICE 'Seed data already exists, skipping.';
+    RETURN;
+  END IF;
+
 INSERT INTO events (name, time, date, location, address, total_spaces, image_url, map_url, description, category) VALUES
 ('Hài kịch: Đảo Hoa Hậu', '20:00 - 22:30', '2026-11-20', 'Nhà hát Bến Thành', 'Số 6 Mạc Đĩnh Chi, Phường Bến Nghé, Quận 1, TP.HCM', 1000, 'https://cdn.tienphong.vn/images/9cdd1123343e89ccd66818037b692298c784abb547c4696f70edd89fbdf07bc28a95ab6a95af6ecc1370b5b790cab0219bd0bce37b89e4f5191445172449cae6e1ea4bd39c695733b513a3985dfeb63f/62bad85461b0a7d60fbd7e365a2cf6e9.jpg', 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?auto=format&fit=crop&w=1200&q=80', 'Vở kịch "Đảo Hoa Hậu" là vở kịch quy tụ nhiều nghệ sĩ hài nổi tiếng mang lại tiếng cười cho gia đình bạn trong dịp cuối tuần. Với các tình tiết bất ngờ và sâu sắc, vở kịch hứa hẹn sẽ mang đến một trải nghiệm đáng nhớ.', 'Nghệ thuật'),
 ('CHUNG KẾT ĐẤU TRƯỜNG DANH VỌNG MÙA XUÂN 2026', '14:00 - 21:00', '2026-05-10', 'Nhà Thi Đấu Đa Năng Quảng Ninh', 'Phường Hồng Hải, TP Hạ Long, Tỉnh Quảng Ninh', 1000, 'https://salt.tkbcdn.com/ts/ds/a5/52/2c/ffc572a433c8ca5054c623f32ebd9733.jpg', 'https://salt.tkbcdn.com/ts/ds/36/5b/5f/6113856a4facdf02a1f11d4b6babd456.jpg', 'Chung Kết Quốc Gia - ĐTDV Mùa Xuân 2026 - nơi chiến địa tái hiện "Bình Nguyên Vô Tận" ngoài đời thực sẽ chính thức diễn ra vào ngày 10/05 tại Nhà thi đấu đa năng Quảng Ninh cùng sân khấu công nghệ 3D Mapping siêu khủng!', 'eSports'),
@@ -155,4 +161,6 @@ SELECT
     FALSE
 FROM event_zones ez
 CROSS JOIN generate_series(1, ez.capacity) AS gs(num);
+
+END $$;
 
