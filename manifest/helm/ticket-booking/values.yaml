@@ -20,6 +20,9 @@ redis:
 app:
   publicUrl: "https://flashticket.site"
 
+payment:
+  publicUrl: "https://flashticket.site"
+
 smtp:
   server: smtp.gmail.com
   port: "587"
