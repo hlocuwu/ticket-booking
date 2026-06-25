@@ -18,6 +18,9 @@ env:
   TF_VAR_ghcr_token: ${{ secrets.GHCR_TOKEN }}
   TF_VAR_momo_access_key: ${{ secrets.MOMO_ACCESS_KEY }}
   TF_VAR_momo_secret_key: ${{ secrets.MOMO_SECRET_KEY }}
+  TF_VAR_smtp_username: ${{ secrets.SMTP_USERNAME }}
+  TF_VAR_smtp_password: ${{ secrets.SMTP_PASSWORD }}
+  TF_VAR_sender_email: ${{ secrets.SENDER_EMAIL }}
 
 jobs:
   terraform:
