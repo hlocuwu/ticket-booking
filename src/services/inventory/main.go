@@ -56,7 +56,11 @@ func setupRouter(db *sql.DB) *gin.Engine {
 			rows *sql.Rows
 			err  error
 		)
-		if eventID := c.Query("event_id"); eventID != "" {
+		eventID := c.Query("event_id")
+		zoneID := c.Query("zone_id")
+		if eventID != "" && zoneID != "" {
+			rows, err = db.Query("SELECT id, event_id, zone_id, seat_name, is_reserved FROM tickets WHERE event_id = $1 AND zone_id = $2", eventID, zoneID)
+		} else if eventID != "" {
 			rows, err = db.Query("SELECT id, event_id, zone_id, seat_name, is_reserved FROM tickets WHERE event_id = $1", eventID)
 		} else {
 			rows, err = db.Query("SELECT id, event_id, zone_id, seat_name, is_reserved FROM tickets")
