@@ -58,5 +58,3 @@ jobs:
             --head "$BRANCH" \
             --title "chore: deploy $VERSION to production" \
             --body "Manual production deploy request for version \`$VERSION\`
-
-Triggered by: @$ACTOR"
