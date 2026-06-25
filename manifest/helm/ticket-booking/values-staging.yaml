@@ -7,7 +7,7 @@ app:
   publicUrl: "https://staging.flashticket.site"
 
 payment:
-  publicUrl: "https://staging.flashticket.site"
+  publicUrl: "https://staging.flashticket.site/api/payment"
 
 db:
   name: ticket_db_staging

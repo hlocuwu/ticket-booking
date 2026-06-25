@@ -21,7 +21,7 @@ app:
   publicUrl: "https://flashticket.site"
 
 payment:
-  publicUrl: "https://flashticket.site"
+  publicUrl: "https://flashticket.site/api/payment"
   momo:
     partnerCode: "MOMO"
     endpoint: "https://test-payment.momo.vn/v2/gateway/api/create"
