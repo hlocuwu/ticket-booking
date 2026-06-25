@@ -1,7 +1,7 @@
 namespace: ticket-booking-staging
 
 image:
-  tag: latest
+  tag: v2.0.3
 
 app:
   publicUrl: "https://staging.flashticket.site"
