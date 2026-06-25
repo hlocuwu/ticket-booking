@@ -21,7 +21,6 @@ metadata:
     helm.sh/hook-weight: "0"
     helm.sh/hook-delete-policy: before-hook-creation
 spec:
-  ttlSecondsAfterFinished: 300
   template:
     spec:
       restartPolicy: Never
