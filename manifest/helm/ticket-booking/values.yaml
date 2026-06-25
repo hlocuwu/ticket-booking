@@ -22,6 +22,9 @@ app:
 
 payment:
   publicUrl: "https://flashticket.site"
+  momo:
+    partnerCode: "MOMO"
+    endpoint: "https://test-payment.momo.vn/v2/gateway/api/create"
 
 smtp:
   server: smtp.gmail.com
