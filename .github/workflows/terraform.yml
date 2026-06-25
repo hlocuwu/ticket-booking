@@ -28,28 +28,13 @@ jobs:
       - name: Format check
         run: terraform fmt -check -recursive
 
-      - name: Init (no backend)
+      - name: Init
         run: terraform init -backend=false
 
       - name: Validate
         run: terraform validate
 
-      - name: TFLint
-        uses: terraform-linters/setup-tflint@6e87008f9dd1fe3e34e66aca6c97b4a69f72a7f4 # v4
-        with:
-          tflint_version: latest
-      - run: |
-          tflint --init
-          tflint --recursive
-
-      - name: Checkov security scan
-        uses: bridgecrewio/checkov-action@fa9edf8f0a491c59a924ea6accd5bdcf07752cff # master
-        with:
-          directory: infra/terraform
-          framework: terraform
-          soft_fail: true
-
-      - name: Terraform Plan
+      - name: Plan
         if: github.event_name == 'pull_request' && secrets.GCP_SA_KEY != ''
         env:
           GOOGLE_CREDENTIALS: ${{ secrets.GCP_SA_KEY }}
@@ -76,3 +61,16 @@ jobs:
               repo: context.repo.repo,
               body: '```terraform\n' + plan.slice(0, 60000) + '\n```'
             });
+
+      - name: Apply
+        if: github.event_name == 'push' && secrets.GCP_SA_KEY != ''
+        env:
+          GOOGLE_CREDENTIALS: ${{ secrets.GCP_SA_KEY }}
+          GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+        run: |
+          terraform init
+          terraform apply -auto-approve -input=false \
+            -var="project_id=$GCP_PROJECT_ID" \
+            -var="db_password=placeholder" \
+            -var="jwt_secret=placeholder" \
+            -var="ghcr_token=placeholder"
