@@ -53,8 +53,9 @@ jobs:
           git commit -m "chore: update production image tag to $VERSION"
           git push origin "$BRANCH"
 
+          BODY=$(printf "Manual production deploy request for version \`%s\`\n\nTriggered by: @%s" "$VERSION" "$ACTOR")
           gh pr create \
             --base main \
             --head "$BRANCH" \
             --title "chore: deploy $VERSION to production" \
-            --body "Manual production deploy request for version \`$VERSION\`
+            --body "$BODY"
