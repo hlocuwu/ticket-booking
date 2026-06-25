@@ -16,7 +16,7 @@ grafana:
   storage: 5Gi
   ingress:
     className: nginx
-    host: grafana.ticket.local
+    host: grafana.flashticket.site
 
 nodeExporter:
   image: prom/node-exporter:v1.8.0

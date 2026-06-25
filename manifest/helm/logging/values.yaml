@@ -13,7 +13,7 @@ opensearchDashboards:
   pullPolicy: IfNotPresent
   ingress:
     className: nginx
-    host: opensearch.ticket.local
+    host: opensearch.flashticket.site
 
 fluentd:
   image: fluent/fluentd-kubernetes-daemonset:v1.16-debian-opensearch-1

@@ -7,28 +7,18 @@ image:
   pullPolicy: IfNotPresent
   pullSecret: ghcr-pull-secret
 
-# External PostgreSQL (docker-compose on host for local, EC2 for staging/prod)
-# Set db.host at deploy time: --set db.host=<host-ip>
 db:
   host: ""
   port: "5432"
   user: ticket_admin
   name: ticket_db
 
-# External Redis — host only for waitingroom, host:port for auth/booking
-# Set redis.host at deploy time: --set redis.host=<host-ip>
 redis:
   host: ""
   port: "6379"
 
 app:
-  publicUrl: "http://ticket.local"
-
-payment:
-  publicUrl: "http://ticket.local/api/payment"
-  momo:
-    partnerCode: MOMO
-    endpoint: "https://test-payment.momo.vn/v2/gateway/api/create"
+  publicUrl: "https://flashticket.site"
 
 smtp:
   server: smtp.gmail.com
@@ -36,9 +26,8 @@ smtp:
 
 ingress:
   className: nginx
-  host: ticket.local
+  host: flashticket.site
 
-# Default resource requests/limits for all services
 resources:
   requests:
     cpu: 100m
@@ -48,7 +37,7 @@ resources:
     memory: 512Mi
 
 queue:
-  maxConcurrent: 50   # số người được phép vào checkout đồng thời trên 1 event
+  maxConcurrent: 50 
 
 replicas:
   auth: 1
@@ -60,7 +49,6 @@ replicas:
   waitingroom: 1
   frontend: 1
 
-# Horizontal Pod Autoscaler
 hpa:
   auth:
     enabled: true
@@ -111,7 +99,6 @@ hpa:
     targetCPU: 70
     targetMemory: 80
 
-# Secrets — do NOT set real values here; override at deploy time via --set or a gitignored secrets file
 secrets:
   dbPassword: ""
   jwtSecret: ""
@@ -121,13 +108,11 @@ secrets:
   momoAccessKey: ""
   momoSecretKey: ""
 
-# TLS via cert-manager + Let's Encrypt — disabled locally, enabled on GKE prod
 tls:
   enabled: false
   acmeEmail: ""
   createClusterIssuer: true
 
-# External Secrets Operator — disabled locally (use values.secrets above), enabled on GKE
 externalSecrets:
   enabled: false
   createClusterStore: false
