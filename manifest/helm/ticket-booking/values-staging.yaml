@@ -6,6 +6,9 @@ image:
 app:
   publicUrl: "https://staging.flashticket.site"
 
+payment:
+  publicUrl: "https://staging.flashticket.site"
+
 db:
   name: ticket_db_staging
 
