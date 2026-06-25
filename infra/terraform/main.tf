@@ -42,10 +42,10 @@ module "gke" {
 }
 
 module "cloudsql" {
-  source     = "./modules/cloudsql"
-  project_id = var.project_id
-  region     = var.region
-  network_id = module.vpc.network_id
+  source      = "./modules/cloudsql"
+  project_id  = var.project_id
+  region      = var.region
+  network_id  = module.vpc.network_id
   db_password = var.db_password
 
   private_services_connection = module.vpc.private_services_connection
