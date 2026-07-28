@@ -17,10 +17,10 @@
     "lucide-react": "^1.17.0",
     "postcss": "^8.5.15",
     "qrcode.react": "^4.2.0",
-    "react": "^19.2.7",
-    "react-dom": "^19.2.7",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
     "react-hot-toast": "^2.6.0",
-    "react-router-dom": "^7.17.0",
+    "react-router-dom": "^7.18.1",
     "tailwindcss": "^4.3.0"
   },
   "devDependencies": {
